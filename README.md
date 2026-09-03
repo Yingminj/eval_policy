@@ -41,7 +41,9 @@ action chunk，与示教动作对比。支持 `act` / `act_dit` / `patch_policy`
 - **观测历史**：支持 `n_obs_steps > 1`（anchor 取最新帧，action 窗口偏移自动对齐；
   `patch_policy` 走 `policy.model.predict` 而非 `predict_action_chunk`）
 - **采样噪声**：扩散类头部 `--seed` 固定噪声、`--seed-repeat N` 用另外 N 个种子重跑同一
-  anchor 并单独计分（`seed_1..N`），给出"两个 checkpoint 的差异是否只是采样"的下界
+  anchor 并单独计分（`seed_1..N`，仅 `patch_policy` 等采样式头部有效），给出"两个
+  checkpoint 的差异是否只是采样"的下界。注意：种子按 batch 重置，anchor 的噪声取决于它在
+  batch 内的位置，**跨 run 比较必须用同一个 `--batch-size`**（已记入输出 JSON）
 - **轨迹导出**：`--dump-traces x.npz` 存第一个评测集的逐 anchor `pred`/`pred_raw`/`gt`/
   `state`/`valid`/`episode_index`/`frame_index`，供 `plot_traces.py` 画图；
   `--trace-anchors`（默认 200）限量，`--trace-episode N`（可重复）指定 episode
@@ -109,3 +111,125 @@ runs/ 内各目录的 README 描述了当次实验的 checkpoint、命令与关�
 1. `mkdir runs/<日期>_<主题>`，写 `run.sh`（调用顶层 `offline_chunk_eval.py`）
 2. 产物放 `runs/<日期>_<主题>/results/`（已被 .gitignore 忽略，只存本地）
 3. 写 README.md 三段：评的是哪个 checkpoint、跑的命令、关键读数
+
+## 用 Claude / Codex 搭实验
+
+新实验不要手写 harness，交给 agent（Claude Code / Codex CLI）做，但**先喂读物再让它动手**。
+顺序很重要：不读训练/推理代码就动手的 agent 会写出一个"看起来对"的评测——观测构造、
+归一化、动作偏移三处任意一处错了，数字照样出得来，而且错得体面。
+
+让 agent 按这个顺序读：
+
+1. **顶层 `offline_chunk_eval.py`**（先读 docstring：它写清了能复现什么、不能复现什么），
+   这是实验框架的地基，新实验是**在它之上加脚本**，不是改它、更不是重写。
+2. **该 policy 的训练与推理代码**：`lerobot` 里的 `modeling_<policy>.py` /
+   `configuration_<policy>.py`，重点是 `n_obs_steps`、`chunk_size` / `action_chunk_size`、
+   `predict_action_chunk` 与 `select_action` 的差异（`patch_policy` 这类要走
+   `policy.model.predict`）。
+3. **部署链路**：`~/YING/lerobot_vlahost` 的 `lerobot/rollout/trajectory.py` 与
+   `strategies/core.py`，以及对应的 `deploy_config_*.yaml`（`inference.n_action_steps`
+   决定执行窗口，配错了整张表就没意义）。
+4. **数据集与权重**：`meta/info.json`（fps / 特征 / episode 数）、
+   `meta/stats.json`（归一化统计量，可用来验两个 checkpoint 是不是吃的同一份数据）、
+   checkpoint 目录下的 `config.json` 与 `train_config.json`（训练集、步数、seed、batch size）。
+5. **一份既有 run**：`runs/scripts_patch_policy_eval_0902/`（脚本 + README + 结果 JSON）
+   与它对应的报告 `policy/experiment_report/patch_policy/patch_policy-eef-independent-eval-2026-09.md`，
+   照这个形状产出。
+
+几条硬约束，写进 prompt 里，agent 容易自己丢掉：
+
+- **解释器**必须是训练该 checkpoint 的那个（一般 `/opt/robot-platform/train-venv/bin/python`）。
+- **不要改顶层 harness**。要复现旧数字就把它逐字节复制进 run 目录；确实要改，
+  在 run 的 README 里逐条列出改了什么、影不影响判据。
+- **先冒烟再全量**：`--max-anchors-per-dataset 50` 跑通全链路，再摘掉这个旗子。
+- **`--selftest` 必须过**，它在主流程前自动跑，失败就别信任何数字。
+- **去污染不可省**：`--train-root` 指向该 run 真正训练用的数据集，
+  目录名不算数，只有 action 指纹算数。
+- **GPU 独占**：并行跑两个评测会互相抢卡，`total_seconds` 会失真。
+- **数字不许编**。报告里的每个数都要能从 `runs/<dir>/results/*.json` 里指出来源；
+  没跑出来的就写"没测"。
+
+### 标准 prompt（直接复制，替换尖括号里的内容）
+
+```text
+You are setting up an offline policy evaluation experiment in the repo
+/home/kewei/YING/paper/eval_policy. Work autonomously; ask me only if a
+required path does not exist.
+
+GOAL
+<one sentence: the question this experiment must answer, e.g. "Does
+patch_policy trained on batch_success_505_eef still beat act_eef when
+scored on the independently collected 53-episode eval set?">
+
+SUBJECTS
+- checkpoints: <abs paths to .../checkpoints/<step>/pretrained_model, with a
+  short name for each>
+- eval dataset(s): <abs path(s)>
+- training dataset(s) each checkpoint actually used: <abs path(s)>  # for --train-root
+- python interpreter: <e.g. /opt/robot-platform/train-venv/bin/python>
+- deploy config governing the executed window: <abs path to deploy_config_*.yaml>
+
+STEP 1 — READ BEFORE YOU WRITE ANYTHING
+Read, in this order, and summarise back to me in <=15 lines what constrains
+the experiment design (do not start coding before this summary):
+  1. ./offline_chunk_eval.py  — especially the module docstring: what it can
+     and cannot reproduce, the deploy rewrite, the predictors and metrics.
+  2. The policy's training + inference code (modeling_*.py, configuration_*.py):
+     n_obs_steps, chunk size field name, predict_action_chunk vs select_action,
+     whether the head samples noise.
+  3. The deploy path: ~/YING/lerobot_vlahost/lerobot/rollout/trajectory.py,
+     strategies/core.py, and the deploy config above (inference.n_action_steps).
+  4. The datasets' meta/info.json + meta/stats.json and each checkpoint's
+     config.json / train_config.json (training set, steps, seed, batch size).
+  5. One prior run as the template for shape and rigour:
+     runs/scripts_patch_policy_eval_0902/ (README.md, run_eval.sh, summarise.py)
+     and its report at
+     /home/kewei/YING/paper/policy/experiment_report/patch_policy/patch_policy-eef-independent-eval-2026-09.md
+
+STEP 2 — BUILD THE EXPERIMENT
+Create runs/<YYYYMMDD>_<topic>/ and build there. Rules:
+  - Do NOT modify the top-level offline_chunk_eval.py. Call it. If you truly
+    need a change, copy it into the run dir and list every diff in the run README.
+  - Write a run_*.sh that drives offline_chunk_eval.py, one --out JSON per
+    checkpoint/condition, stdout tee'd to a .log next to it, under results/.
+  - Add small single-purpose probe scripts only where the harness cannot answer
+    the question (dataset provenance, overlap/contamination, OOD rate, alignment
+    self-check, cross-space comparison). One script, one question, one .txt/.json.
+  - Always pass --train-root for every training set involved, and --selftest
+    must pass. Set --n-action-steps from the deploy config, not from habit.
+  - Use --filter-ablation when a deploy filter stack exists; use --filters none
+    when the deploy path has none — and say in the README which it is and why.
+  - For sampling heads, use --seed and --seed-repeat 1 so I can tell a real gap
+    from sampling noise. Keep --batch-size identical across runs being compared.
+  - Smoke-test everything with --max-anchors-per-dataset 50 first, then run full.
+  - Run evaluations sequentially — never two on the same GPU at once.
+  - Add summarise.py that turns results/*.json into the markdown tables the
+    report uses. The report must contain no number that summarise.py cannot emit.
+
+STEP 3 — RUN
+Execute the smoke pass, show me the deltas you expect, then the full pass.
+Report failures verbatim; never patch around a failing self-check.
+
+STEP 4 — DELIVERABLES
+  a) runs/<YYYYMMDD>_<topic>/README.md: the checkpoints evaluated, the exact
+     commands, a file->purpose->report-section table, deviations from the
+     previous run's harness, and any trap you hit.
+  b) A report at
+     /home/kewei/YING/paper/policy/experiment_report/<policy>/<policy>-<topic>-<YYYY-MM>.md,
+     in Chinese, in the shape of the template report above:
+       - header block: eval set (with ep/frame/anchor counts), checkpoints table,
+         measurement date + machine + interpreter, path to scripts+raw results,
+         which prior report this supersedes or corrects
+       - "1. 结论": <=5 numbered claims, each one carrying its own numbers
+       - a section auditing the eval set (provenance, contamination, OOD rate,
+         alignment) before any accuracy table
+       - the main tables (@1/@10/@25/@50, rmse, vs null), grouped-error tables
+         where the action dims have mixed units, and the deploy-window number
+       - a mechanism section explaining *why*, not just *what*
+       - "建议": what to deploy, what to stop investing in, what is still untested
+     Every number traceable to results/*.json. State null baselines alongside every
+     accuracy number. If a prior report is contradicted, say so explicitly and
+     name the section. Write "not measured" rather than guessing.
+
+Finish by printing the report path and the three headline numbers.
+```

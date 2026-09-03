@@ -455,7 +455,8 @@ def evaluate(
     print(
         f"policy {cfg.type}: n_obs_steps={getattr(cfg, 'n_obs_steps', 1)}, "
         f"action offset {a_off}, seed {seed}"
-        + (f", {seed_repeat} extra sampling seeds" if seed_repeat else ""),
+        # only the patch path re-samples; --seed-repeat is a no-op for a deterministic head
+        + (f", {seed_repeat} extra sampling seeds" if is_patch and seed_repeat else ""),
         flush=True,
     )
     print(f"policy_deployed filters: {', '.join(filters) if filters else '(none)'}"
@@ -633,6 +634,11 @@ def evaluate(
             flush=True,
         )
 
+    if n_joints is None:
+        raise RuntimeError(
+            "nothing was scored: every --dataset-root is fully contained in --train-root "
+            "(pass --keep-only-contaminated to score the seen episodes on purpose)"
+        )
     return {
         "checkpoint": str(checkpoint),
         "policy_type": cfg.type,
@@ -655,6 +661,10 @@ def evaluate(
         "seed_repeat": seed_repeat,
         "joint_names": joint_names,
         "stride": stride,
+        # ponytail: the diffusion seed is re-set per batch, so an anchor's sampling noise
+        # depends on its index within its batch -- two runs are only comparable at the same
+        # batch_size. Recorded rather than fixed; per-anchor seeding costs per-anchor predict.
+        "batch_size": batch_size,
         "device": device,
         "total_seconds": round(time.time() - t_start, 1),
         "per_dataset": per_dataset,
