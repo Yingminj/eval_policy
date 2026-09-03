@@ -831,7 +831,7 @@ def main() -> None:
                    help="save raw per-anchor pred/gt/state for the first scored dataset to an .npz, "
                         "for plot_traces.py")
     p.add_argument("--trace-anchors", type=int, default=200,
-                   help="max anchors to keep in the trace dump (default 40)")
+                   help="max anchors to keep in the trace dump")
     p.add_argument("--trace-episode", type=int, action="append", default=[],
                    help="only dump anchors from this episode index (repeatable). Without it the "
                         "first --trace-anchors anchors of the dataset are kept, which with "
