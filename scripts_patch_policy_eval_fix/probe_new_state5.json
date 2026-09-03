@@ -1,0 +1,63 @@
+{
+  "checkpoint": "/mnt/robot_platform/jobs/patch_policy_tidy_up_stationery_le_batch_success_361_2026-08-30_11-27-35-272413/run/checkpoints/200000/pretrained_model",
+  "dataset": "tidy_up_stationery_le/batch_success_53_eval_data",
+  "held_out": false,
+  "n_anchors": 96,
+  "use_robot_state": true,
+  "interframe_scale_rad": 0.349683,
+  "interventions": {
+    "all_cams_swapped": {
+      "delta_rad": 0.474506,
+      "frac_of_interframe": 1.357
+    },
+    "swap_top": {
+      "delta_rad": 0.079714,
+      "frac_of_interframe": 0.228
+    },
+    "swap_wrist_L": {
+      "delta_rad": 0.208651,
+      "frac_of_interframe": 0.5967
+    },
+    "swap_wrist_R": {
+      "delta_rad": 0.284128,
+      "frac_of_interframe": 0.8125
+    },
+    "history_frozen": {
+      "delta_rad": 0.009826,
+      "frac_of_interframe": 0.0281
+    },
+    "history_reversed": {
+      "delta_rad": 0.001838,
+      "frac_of_interframe": 0.0053
+    },
+    "state_swapped": {
+      "delta_rad": 0.023463,
+      "frac_of_interframe": 0.0671
+    },
+    "zero_state": {
+      "delta_rad": 0.017856,
+      "frac_of_interframe": 0.0511
+    },
+    "state_history_reversed": {
+      "delta_rad": 0.000328,
+      "frac_of_interframe": 0.0009
+    },
+    "gray_images": {
+      "delta_rad": 0.37916,
+      "frac_of_interframe": 1.0843
+    },
+    "patch_avg_pool": {
+      "delta_rad": 0.194381,
+      "frac_of_interframe": 0.5559
+    },
+    "quarter_resolution": {
+      "delta_rad": 0.056978,
+      "frac_of_interframe": 0.1629
+    }
+  },
+  "first_action_vs_state": {
+    "policy_mae_rad": 0.041683,
+    "demonstration_mae_rad": 0.014048,
+    "ratio_policy_over_demo": 2.967
+  }
+}

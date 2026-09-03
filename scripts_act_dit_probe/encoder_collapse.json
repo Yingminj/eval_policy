@@ -1,0 +1,137 @@
+{
+  "/mnt/robot_platform/jobs/act_dit_tidy_up_stationery_le_batch_success_361_2026-08-20_22-59-31-790981/run/checkpoints/050000/pretrained_model": {
+    "policy_type": "act_dit",
+    "gamma_mean_abs": [
+      0.99827,
+      0.99738,
+      0.95894,
+      0.48821
+    ],
+    "gamma_frac_below_0.05": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "signal_abs_mean": [
+      0.806202,
+      0.774393,
+      0.51194,
+      0.09686
+    ],
+    "image_sensitivity": [
+      0.035592,
+      0.019806,
+      0.001477,
+      7e-06
+    ]
+  },
+  "/mnt/robot_platform/jobs/act_dit_tidy_up_stationery_le_batch_success_361_2026-08-20_22-59-31-790981/run/checkpoints/100000/pretrained_model": {
+    "policy_type": "act_dit",
+    "gamma_mean_abs": [
+      0.99828,
+      0.99732,
+      0.95045,
+      0.25044
+    ],
+    "gamma_frac_below_0.05": [
+      0.0,
+      0.0,
+      0.0,
+      0.0508
+    ],
+    "signal_abs_mean": [
+      0.811294,
+      0.767349,
+      0.559444,
+      0.045641
+    ],
+    "image_sensitivity": [
+      0.031954,
+      0.014302,
+      0.000825,
+      3e-06
+    ]
+  },
+  "/mnt/robot_platform/jobs/act_dit_tidy_up_stationery_le_batch_success_361_2026-08-20_22-59-31-790981/run/checkpoints/150000/pretrained_model": {
+    "policy_type": "act_dit",
+    "gamma_mean_abs": [
+      0.99823,
+      0.99753,
+      0.94523,
+      0.1795
+    ],
+    "gamma_frac_below_0.05": [
+      0.0,
+      0.0,
+      0.0,
+      0.0957
+    ],
+    "signal_abs_mean": [
+      0.806524,
+      0.774802,
+      0.747479,
+      0.004676
+    ],
+    "image_sensitivity": [
+      0.006805,
+      0.00199,
+      2.3e-05,
+      5e-06
+    ]
+  },
+  "/mnt/robot_platform/jobs/act_dit_tidy_up_stationery_le_batch_success_361_2026-08-20_22-59-31-790981/run/checkpoints/200000/pretrained_model": {
+    "policy_type": "act_dit",
+    "gamma_mean_abs": [
+      0.99822,
+      0.99757,
+      0.94265,
+      0.13087
+    ],
+    "gamma_frac_below_0.05": [
+      0.0,
+      0.0,
+      0.0,
+      0.3535
+    ],
+    "signal_abs_mean": [
+      0.806644,
+      0.777874,
+      0.768238,
+      0.003781
+    ],
+    "image_sensitivity": [
+      0.00542,
+      0.001704,
+      1.4e-05,
+      2e-06
+    ]
+  },
+  "/mnt/robot_platform/jobs/act_tidy_up_stationery_le_batch_success_361_2026-08-17_12-42-42-097328/run/checkpoints/200000/pretrained_model": {
+    "policy_type": "act",
+    "gamma_mean_abs": [
+      1.00425,
+      1.00381,
+      1.00373,
+      1.00371
+    ],
+    "gamma_frac_below_0.05": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "signal_abs_mean": [
+      0.800527,
+      0.793587,
+      0.806821,
+      0.814205
+    ],
+    "image_sensitivity": [
+      0.082252,
+      0.07009,
+      0.059211,
+      0.049903
+    ]
+  }
+}

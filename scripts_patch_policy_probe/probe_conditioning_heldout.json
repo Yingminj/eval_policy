@@ -1,0 +1,51 @@
+{
+  "checkpoint": "/mnt/robot_platform/jobs/patch_policy_tidy_up_stationery_le_batch_success_361_2026-08-20_21-31-19-689756/run/checkpoints/200000/pretrained_model",
+  "dataset": "tidy_up_stationery_le/batch_3",
+  "held_out": true,
+  "n_anchors": 48,
+  "use_robot_state": false,
+  "interframe_scale_rad": 0.309997,
+  "interventions": {
+    "all_cams_swapped": {
+      "delta_rad": 0.37603,
+      "frac_of_interframe": 1.213
+    },
+    "swap_top": {
+      "delta_rad": 0.098348,
+      "frac_of_interframe": 0.3173
+    },
+    "swap_wrist_L": {
+      "delta_rad": 0.142782,
+      "frac_of_interframe": 0.4606
+    },
+    "swap_wrist_R": {
+      "delta_rad": 0.200064,
+      "frac_of_interframe": 0.6454
+    },
+    "history_frozen": {
+      "delta_rad": 0.016023,
+      "frac_of_interframe": 0.0517
+    },
+    "history_reversed": {
+      "delta_rad": 0.002419,
+      "frac_of_interframe": 0.0078
+    },
+    "gray_images": {
+      "delta_rad": 0.335375,
+      "frac_of_interframe": 1.0819
+    },
+    "patch_avg_pool": {
+      "delta_rad": 0.196329,
+      "frac_of_interframe": 0.6333
+    },
+    "quarter_resolution": {
+      "delta_rad": 0.057388,
+      "frac_of_interframe": 0.1851
+    }
+  },
+  "first_action_vs_state": {
+    "policy_mae_rad": 0.065703,
+    "demonstration_mae_rad": 0.018197,
+    "ratio_policy_over_demo": 3.611
+  }
+}

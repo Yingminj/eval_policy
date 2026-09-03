@@ -1,0 +1,91 @@
+{
+  "checkpoint": "/mnt/robot_platform/jobs/patch_policy_tidy_up_stationery_le_batch_success_361_2026-08-30_11-27-35-272413/run/checkpoints/200000/pretrained_model",
+  "policy_type": "patch_policy",
+  "dataset": "tidy_up_stationery_le/batch_success_53_eval_data",
+  "n_anchors": 2007,
+  "policy_mae": 0.041444,
+  "demonstration_mae": 0.015562,
+  "ratio_policy_over_demo": 2.663,
+  "per_dim": {
+    "Joint1_L": {
+      "policy": 0.038217,
+      "demo": 0.013615,
+      "ratio": 2.807
+    },
+    "Joint2_L": {
+      "policy": 0.017499,
+      "demo": 0.006835,
+      "ratio": 2.56
+    },
+    "Joint3_L": {
+      "policy": 0.022032,
+      "demo": 0.008963,
+      "ratio": 2.458
+    },
+    "Joint4_L": {
+      "policy": 0.027277,
+      "demo": 0.009474,
+      "ratio": 2.879
+    },
+    "Joint5_L": {
+      "policy": 0.04683,
+      "demo": 0.010676,
+      "ratio": 4.387
+    },
+    "Joint6_L": {
+      "policy": 0.042643,
+      "demo": 0.043816,
+      "ratio": 0.973
+    },
+    "Joint7_L": {
+      "policy": 0.101055,
+      "demo": 0.050745,
+      "ratio": 1.991
+    },
+    "Joint1_R": {
+      "policy": 0.04097,
+      "demo": 0.015312,
+      "ratio": 2.676
+    },
+    "Joint2_R": {
+      "policy": 0.028395,
+      "demo": 0.012302,
+      "ratio": 2.308
+    },
+    "Joint3_R": {
+      "policy": 0.041202,
+      "demo": 0.00994,
+      "ratio": 4.145
+    },
+    "Joint4_R": {
+      "policy": 0.051762,
+      "demo": 0.0169,
+      "ratio": 3.063
+    },
+    "Joint5_R": {
+      "policy": 0.047029,
+      "demo": 0.015238,
+      "ratio": 3.086
+    },
+    "Joint6_R": {
+      "policy": 0.052104,
+      "demo": 0.021791,
+      "ratio": 2.391
+    },
+    "Joint7_R": {
+      "policy": 0.060866,
+      "demo": 0.01309,
+      "ratio": 4.65
+    },
+    "gripper_L": {
+      "policy": 0.019156,
+      "demo": 0.00027,
+      "ratio": 70.916
+    },
+    "gripper_R": {
+      "policy": 0.02607,
+      "demo": 3e-05,
+      "ratio": 874.519
+    }
+  }
+}

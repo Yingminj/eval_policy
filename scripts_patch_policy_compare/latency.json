@@ -1,0 +1,22 @@
+{
+ "A_act": {
+  "median_s": 0.0106,
+  "p10_s": 0.0103,
+  "p90_s": 0.0116,
+  "n_action_steps": 50,
+  "own_window_s": 1.667,
+  "duty_own": 0.006,
+  "duty_deployed_8": 0.04,
+  "denoise_steps": null
+ },
+ "B_diffusion": {
+  "median_s": 0.614,
+  "p10_s": 0.6113,
+  "p90_s": 0.6443,
+  "n_action_steps": 32,
+  "own_window_s": 1.067,
+  "duty_own": 0.576,
+  "duty_deployed_8": 2.3,
+  "denoise_steps": 100
+ }
+}

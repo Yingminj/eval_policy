@@ -1,0 +1,51 @@
+{
+  "checkpoint": "/mnt/robot_platform/jobs/patch_policy_tidy_up_stationery_le_batch_success_361_2026-08-20_21-21-58-821581/run/checkpoints/200000/pretrained_model",
+  "dataset": "tidy_up_stationery_le/batch_success_53_eval_data",
+  "held_out": false,
+  "n_anchors": 96,
+  "use_robot_state": false,
+  "interframe_scale_rad": 0.354691,
+  "interventions": {
+    "all_cams_swapped": {
+      "delta_rad": 0.495433,
+      "frac_of_interframe": 1.3968
+    },
+    "swap_top": {
+      "delta_rad": 0.125822,
+      "frac_of_interframe": 0.3547
+    },
+    "swap_wrist_L": {
+      "delta_rad": 0.182326,
+      "frac_of_interframe": 0.514
+    },
+    "swap_wrist_R": {
+      "delta_rad": 0.20324,
+      "frac_of_interframe": 0.573
+    },
+    "history_frozen": {
+      "delta_rad": 0.012256,
+      "frac_of_interframe": 0.0346
+    },
+    "history_reversed": {
+      "delta_rad": 0.003564,
+      "frac_of_interframe": 0.01
+    },
+    "gray_images": {
+      "delta_rad": 0.318908,
+      "frac_of_interframe": 0.8991
+    },
+    "patch_avg_pool": {
+      "delta_rad": 0.127151,
+      "frac_of_interframe": 0.3585
+    },
+    "quarter_resolution": {
+      "delta_rad": 0.089984,
+      "frac_of_interframe": 0.2537
+    }
+  },
+  "first_action_vs_state": {
+    "policy_mae_rad": 0.042907,
+    "demonstration_mae_rad": 0.014048,
+    "ratio_policy_over_demo": 3.054
+  }
+}

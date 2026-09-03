@@ -1,0 +1,191 @@
+{
+  "/mnt/robot_platform/jobs/act_dit_tidy_up_stationery_le_batch_success_361_2026-08-24_06-21-05-197422/run/checkpoints/050000/pretrained_model": {
+    "policy_type": "act_dit",
+    "gamma_mean_abs": [
+      1.00109,
+      0.99961,
+      0.99857,
+      0.99155
+    ],
+    "gamma_frac_below_0.05": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "signal_abs_mean": [
+      0.792097,
+      0.800554,
+      0.772676,
+      0.691033
+    ],
+    "image_sensitivity": [
+      0.172706,
+      0.122884,
+      0.064237,
+      0.019283
+    ]
+  },
+  "/mnt/robot_platform/jobs/act_dit_tidy_up_stationery_le_batch_success_361_2026-08-24_06-21-05-197422/run/checkpoints/100000/pretrained_model": {
+    "policy_type": "act_dit",
+    "gamma_mean_abs": [
+      1.00339,
+      1.00035,
+      0.99823,
+      0.98521
+    ],
+    "gamma_frac_below_0.05": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "signal_abs_mean": [
+      0.800369,
+      0.809256,
+      0.762988,
+      0.626494
+    ],
+    "image_sensitivity": [
+      0.148236,
+      0.110696,
+      0.070609,
+      0.023025
+    ]
+  },
+  "/mnt/robot_platform/jobs/act_dit_tidy_up_stationery_le_batch_success_361_2026-08-24_06-21-05-197422/run/checkpoints/150000/pretrained_model": {
+    "policy_type": "act_dit",
+    "gamma_mean_abs": [
+      1.00509,
+      1.00108,
+      0.99815,
+      0.97892
+    ],
+    "gamma_frac_below_0.05": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "signal_abs_mean": [
+      0.807851,
+      0.808616,
+      0.753316,
+      0.572002
+    ],
+    "image_sensitivity": [
+      0.12382,
+      0.097465,
+      0.068803,
+      0.025705
+    ]
+  },
+  "/mnt/robot_platform/jobs/act_dit_tidy_up_stationery_le_batch_success_361_2026-08-24_06-21-05-197422/run/checkpoints/200000/pretrained_model": {
+    "policy_type": "act_dit",
+    "gamma_mean_abs": [
+      1.00637,
+      1.00175,
+      0.99817,
+      0.97313
+    ],
+    "gamma_frac_below_0.05": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "signal_abs_mean": [
+      0.811449,
+      0.805077,
+      0.749723,
+      0.516204
+    ],
+    "image_sensitivity": [
+      0.097673,
+      0.079873,
+      0.056986,
+      0.021852
+    ]
+  },
+  "/mnt/robot_platform/jobs/act_dit_tidy_up_stationery_le_batch_success_361_2026-08-22_02-42-49-084576/run/checkpoints/200000/pretrained_model": {
+    "policy_type": "act_dit",
+    "gamma_mean_abs": [
+      0.99959,
+      0.99797,
+      0.94365,
+      0.11323
+    ],
+    "gamma_frac_below_0.05": [
+      0.0,
+      0.0,
+      0.0,
+      0.6777
+    ],
+    "signal_abs_mean": [
+      0.781226,
+      0.769641,
+      0.752045,
+      0.00174
+    ],
+    "image_sensitivity": [
+      0.021403,
+      0.003323,
+      4e-05,
+      3e-06
+    ]
+  },
+  "/mnt/robot_platform/jobs/act_dit_tidy_up_stationery_le_batch_success_361_2026-08-20_22-59-31-790981/run/checkpoints/200000/pretrained_model": {
+    "policy_type": "act_dit",
+    "gamma_mean_abs": [
+      0.99822,
+      0.99757,
+      0.94265,
+      0.13087
+    ],
+    "gamma_frac_below_0.05": [
+      0.0,
+      0.0,
+      0.0,
+      0.3535
+    ],
+    "signal_abs_mean": [
+      0.806644,
+      0.777874,
+      0.768238,
+      0.003781
+    ],
+    "image_sensitivity": [
+      0.00542,
+      0.001704,
+      1.4e-05,
+      2e-06
+    ]
+  },
+  "/mnt/robot_platform/jobs/act_tidy_up_stationery_le_batch_success_361_2026-08-17_12-42-42-097328/run/checkpoints/200000/pretrained_model": {
+    "policy_type": "act",
+    "gamma_mean_abs": [
+      1.00425,
+      1.00381,
+      1.00373,
+      1.00371
+    ],
+    "gamma_frac_below_0.05": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "signal_abs_mean": [
+      0.800527,
+      0.793587,
+      0.806821,
+      0.814205
+    ],
+    "image_sensitivity": [
+      0.082252,
+      0.07009,
+      0.059211,
+      0.049903
+    ]
+  }
+}

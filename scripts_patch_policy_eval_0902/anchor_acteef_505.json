@@ -1,0 +1,81 @@
+{
+  "checkpoint": "/mnt/robot_platform/jobs/act_eef_tidy_up_stationery_le_batch_success_505_eef/checkpoints/200000/pretrained_model",
+  "policy_type": "act_eef",
+  "dataset": "tidy_up_stationery_le/batch_success_53_eval_data_eef",
+  "n_anchors": 2007,
+  "policy_mae": 0.028226,
+  "demonstration_mae": 0.02098,
+  "ratio_policy_over_demo": 1.345,
+  "per_dim": {
+    "eef_l_x": {
+      "policy": 0.013948,
+      "demo": 0.011909,
+      "ratio": 1.171
+    },
+    "eef_l_y": {
+      "policy": 0.005445,
+      "demo": 0.00523,
+      "ratio": 1.041
+    },
+    "eef_l_z": {
+      "policy": 0.006211,
+      "demo": 0.005681,
+      "ratio": 1.093
+    },
+    "eef_l_roll": {
+      "policy": 0.087674,
+      "demo": 0.077132,
+      "ratio": 1.137
+    },
+    "eef_l_pitch": {
+      "policy": 0.037294,
+      "demo": 0.040268,
+      "ratio": 0.926
+    },
+    "eef_l_yaw": {
+      "policy": 0.109246,
+      "demo": 0.080446,
+      "ratio": 1.358
+    },
+    "eef_r_x": {
+      "policy": 0.007244,
+      "demo": 0.004985,
+      "ratio": 1.453
+    },
+    "eef_r_y": {
+      "policy": 0.00657,
+      "demo": 0.004592,
+      "ratio": 1.431
+    },
+    "eef_r_z": {
+      "policy": 0.005777,
+      "demo": 0.00454,
+      "ratio": 1.272
+    },
+    "eef_r_roll": {
+      "policy": 0.035058,
+      "demo": 0.020417,
+      "ratio": 1.717
+    },
+    "eef_r_pitch": {
+      "policy": 0.035889,
+      "demo": 0.020696,
+      "ratio": 1.734
+    },
+    "eef_r_yaw": {
+      "policy": 0.029075,
+      "demo": 0.017525,
+      "ratio": 1.659
+    },
+    "gripper_L": {
+      "policy": 0.006687,
+      "demo": 0.00027,
+      "ratio": 24.757
+    },
+    "gripper_R": {
+      "policy": 0.009045,
+      "demo": 3e-05,
+      "ratio": 303.419
+    }
+  }
+}

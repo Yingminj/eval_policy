@@ -1,0 +1,242 @@
+{
+  "arm": "lowlr",
+  "steps": 8000,
+  "batch_size": 16,
+  "lr": 1e-05,
+  "seed": 1000,
+  "dataset": "tidy_up_stationery_le/batch_success_361",
+  "seconds": 6315.4,
+  "history": [
+    {
+      "step": 1,
+      "loss": 2.55134,
+      "gamma_last": 1.0,
+      "image_sensitivity": 0.57128,
+      "signal": 0.796358
+    },
+    {
+      "step": 250,
+      "loss": 1.0353,
+      "gamma_last": 0.99984,
+      "image_sensitivity": 1.030157,
+      "signal": 0.800178
+    },
+    {
+      "step": 500,
+      "loss": 0.56263,
+      "gamma_last": 0.999689,
+      "image_sensitivity": 1.068976,
+      "signal": 0.800634
+    },
+    {
+      "step": 750,
+      "loss": 0.45168,
+      "gamma_last": 0.999602,
+      "image_sensitivity": 1.102357,
+      "signal": 0.80286
+    },
+    {
+      "step": 1000,
+      "loss": 0.35194,
+      "gamma_last": 0.999468,
+      "image_sensitivity": 1.110733,
+      "signal": 0.802295
+    },
+    {
+      "step": 1250,
+      "loss": 0.30741,
+      "gamma_last": 0.999325,
+      "image_sensitivity": 1.106538,
+      "signal": 0.802239
+    },
+    {
+      "step": 1500,
+      "loss": 0.2821,
+      "gamma_last": 0.999165,
+      "image_sensitivity": 1.111405,
+      "signal": 0.802023
+    },
+    {
+      "step": 1750,
+      "loss": 0.26468,
+      "gamma_last": 0.999015,
+      "image_sensitivity": 1.111457,
+      "signal": 0.80162
+    },
+    {
+      "step": 2000,
+      "loss": 0.25181,
+      "gamma_last": 0.998862,
+      "image_sensitivity": 1.110559,
+      "signal": 0.801994
+    },
+    {
+      "step": 2250,
+      "loss": 0.22222,
+      "gamma_last": 0.998723,
+      "image_sensitivity": 1.098603,
+      "signal": 0.801719
+    },
+    {
+      "step": 2500,
+      "loss": 0.22158,
+      "gamma_last": 0.998584,
+      "image_sensitivity": 1.095522,
+      "signal": 0.801947
+    },
+    {
+      "step": 2750,
+      "loss": 0.20721,
+      "gamma_last": 0.998435,
+      "image_sensitivity": 1.09096,
+      "signal": 0.801991
+    },
+    {
+      "step": 3000,
+      "loss": 0.19797,
+      "gamma_last": 0.998307,
+      "image_sensitivity": 1.087712,
+      "signal": 0.801669
+    },
+    {
+      "step": 3250,
+      "loss": 0.19155,
+      "gamma_last": 0.998173,
+      "image_sensitivity": 1.084839,
+      "signal": 0.802497
+    },
+    {
+      "step": 3500,
+      "loss": 0.18779,
+      "gamma_last": 0.998028,
+      "image_sensitivity": 1.083647,
+      "signal": 0.802162
+    },
+    {
+      "step": 3750,
+      "loss": 0.18653,
+      "gamma_last": 0.997895,
+      "image_sensitivity": 1.075973,
+      "signal": 0.802032
+    },
+    {
+      "step": 4000,
+      "loss": 0.17524,
+      "gamma_last": 0.99776,
+      "image_sensitivity": 1.080285,
+      "signal": 0.801553
+    },
+    {
+      "step": 4250,
+      "loss": 0.17293,
+      "gamma_last": 0.997629,
+      "image_sensitivity": 1.077469,
+      "signal": 0.801061
+    },
+    {
+      "step": 4500,
+      "loss": 0.17049,
+      "gamma_last": 0.997495,
+      "image_sensitivity": 1.070985,
+      "signal": 0.801102
+    },
+    {
+      "step": 4750,
+      "loss": 0.15762,
+      "gamma_last": 0.99737,
+      "image_sensitivity": 1.064332,
+      "signal": 0.801365
+    },
+    {
+      "step": 5000,
+      "loss": 0.15779,
+      "gamma_last": 0.99725,
+      "image_sensitivity": 1.064586,
+      "signal": 0.801298
+    },
+    {
+      "step": 5250,
+      "loss": 0.15851,
+      "gamma_last": 0.99712,
+      "image_sensitivity": 1.066378,
+      "signal": 0.801368
+    },
+    {
+      "step": 5500,
+      "loss": 0.15539,
+      "gamma_last": 0.996985,
+      "image_sensitivity": 1.056919,
+      "signal": 0.801406
+    },
+    {
+      "step": 5750,
+      "loss": 0.1478,
+      "gamma_last": 0.996868,
+      "image_sensitivity": 1.057045,
+      "signal": 0.800837
+    },
+    {
+      "step": 6000,
+      "loss": 0.13977,
+      "gamma_last": 0.996751,
+      "image_sensitivity": 1.055137,
+      "signal": 0.800929
+    },
+    {
+      "step": 6250,
+      "loss": 0.14156,
+      "gamma_last": 0.99664,
+      "image_sensitivity": 1.051238,
+      "signal": 0.800526
+    },
+    {
+      "step": 6500,
+      "loss": 0.14658,
+      "gamma_last": 0.996532,
+      "image_sensitivity": 1.049625,
+      "signal": 0.801164
+    },
+    {
+      "step": 6750,
+      "loss": 0.13728,
+      "gamma_last": 0.996423,
+      "image_sensitivity": 1.039942,
+      "signal": 0.800315
+    },
+    {
+      "step": 7000,
+      "loss": 0.13521,
+      "gamma_last": 0.996314,
+      "image_sensitivity": 1.030701,
+      "signal": 0.800897
+    },
+    {
+      "step": 7250,
+      "loss": 0.13283,
+      "gamma_last": 0.996203,
+      "image_sensitivity": 1.036228,
+      "signal": 0.800442
+    },
+    {
+      "step": 7500,
+      "loss": 0.13546,
+      "gamma_last": 0.996095,
+      "image_sensitivity": 1.033176,
+      "signal": 0.800231
+    },
+    {
+      "step": 7750,
+      "loss": 0.1287,
+      "gamma_last": 0.995994,
+      "image_sensitivity": 1.024265,
+      "signal": 0.800072
+    },
+    {
+      "step": 8000,
+      "loss": 0.12436,
+      "gamma_last": 0.995896,
+      "image_sensitivity": 1.034216,
+      "signal": 0.799547
+    }
+  ]
+}

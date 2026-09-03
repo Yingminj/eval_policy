@@ -1,0 +1,57 @@
+{
+  "new_state5": {
+    "median_s": 0.5946,
+    "p10_s": 0.5925,
+    "p90_s": 0.5961,
+    "n_action_steps": 50,
+    "n_obs_steps": 5,
+    "encoder_images_per_call": 15,
+    "window_s": 1.667,
+    "duty": 0.357,
+    "denoise_steps": 100
+  },
+  "new_obs2": {
+    "median_s": 0.2962,
+    "p10_s": 0.2949,
+    "p90_s": 0.298,
+    "n_action_steps": 50,
+    "n_obs_steps": 2,
+    "encoder_images_per_call": 6,
+    "window_s": 1.667,
+    "duty": 0.178,
+    "denoise_steps": 100
+  },
+  "prev_diffusion": {
+    "median_s": 0.6078,
+    "p10_s": 0.6066,
+    "p90_s": 0.6092,
+    "n_action_steps": 32,
+    "n_obs_steps": 5,
+    "encoder_images_per_call": 15,
+    "window_s": 1.067,
+    "duty": 0.57,
+    "denoise_steps": 100
+  },
+  "prev_act_head": {
+    "median_s": 0.0105,
+    "p10_s": 0.0104,
+    "p90_s": 0.0117,
+    "n_action_steps": 50,
+    "n_obs_steps": 5,
+    "encoder_images_per_call": 15,
+    "window_s": 1.667,
+    "duty": 0.006,
+    "denoise_steps": null
+  },
+  "act_baseline": {
+    "median_s": 0.0065,
+    "p10_s": 0.0065,
+    "p90_s": 0.0077,
+    "n_action_steps": 100,
+    "n_obs_steps": 1,
+    "encoder_images_per_call": 3,
+    "window_s": 3.333,
+    "duty": 0.002,
+    "denoise_steps": null
+  }
+}

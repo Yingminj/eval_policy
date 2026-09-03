@@ -1,0 +1,76 @@
+{
+  "checkpoint": "/mnt/robot_platform/jobs/patch_policy_tidy_up_stationery_le_batch_success_361_2026-08-20_21-31-19-689756/run/checkpoints/200000/pretrained_model",
+  "train": "tidy_up_stationery_le/batch_success_361",
+  "heldout": "tidy_up_stationery_le/batch_3",
+  "n_train": 3000,
+  "n_val": 1000,
+  "vision_encoder": "dino_patch",
+  "tokens_per_frame": 768,
+  "readouts": {
+    "train_mean": {
+      "mae": 0.306896,
+      "per_joint_mae": {
+        "Joint1_L": 0.362,
+        "Joint2_L": 0.08267,
+        "Joint3_L": 0.24493,
+        "Joint4_L": 0.13466,
+        "Joint5_L": 0.37258,
+        "Joint6_L": 0.22797,
+        "Joint7_L": 0.39609,
+        "Joint1_R": 0.26048,
+        "Joint2_R": 0.15172,
+        "Joint3_R": 0.15572,
+        "Joint4_R": 0.26627,
+        "Joint5_R": 0.57654,
+        "Joint6_R": 0.43593,
+        "Joint7_R": 0.26999,
+        "gripper_L": 0.48772,
+        "gripper_R": 0.48507
+      }
+    },
+    "mean_pool_ridge": {
+      "mae": 0.120889,
+      "per_joint_mae": {
+        "Joint1_L": 0.11021,
+        "Joint2_L": 0.07225,
+        "Joint3_L": 0.0924,
+        "Joint4_L": 0.10215,
+        "Joint5_L": 0.12154,
+        "Joint6_L": 0.13382,
+        "Joint7_L": 0.14495,
+        "Joint1_R": 0.08904,
+        "Joint2_R": 0.07215,
+        "Joint3_R": 0.10187,
+        "Joint4_R": 0.10971,
+        "Joint5_R": 0.13644,
+        "Joint6_R": 0.16768,
+        "Joint7_R": 0.17498,
+        "gripper_L": 0.16822,
+        "gripper_R": 0.13682
+      },
+      "lambda": 1.0
+    },
+    "all_patches_linear": {
+      "mae": 0.385374,
+      "per_joint_mae": {
+        "Joint1_L": 0.25234,
+        "Joint2_L": 0.31702,
+        "Joint3_L": 0.1735,
+        "Joint4_L": 0.16044,
+        "Joint5_L": 0.40727,
+        "Joint6_L": 0.21194,
+        "Joint7_L": 0.36559,
+        "Joint1_R": 0.61204,
+        "Joint2_R": 0.32249,
+        "Joint3_R": 0.35608,
+        "Joint4_R": 0.43656,
+        "Joint5_R": 0.4944,
+        "Joint6_R": 0.33397,
+        "Joint7_R": 0.27706,
+        "gripper_L": 1.13086,
+        "gripper_R": 0.31442
+      },
+      "best_mae_over_training": 0.223649
+    }
+  }
+}

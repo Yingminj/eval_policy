@@ -1,0 +1,8 @@
+
+## batch_success_505 -> batch_success_505_eef
+  observation.state  shape 14D  max|Δ| = 0.000e+00  mean|Δ| = 0.000e+00  MATCH
+  action             shape 14D  max|Δ| = 0.000e+00  mean|Δ| = 0.000e+00  MATCH
+
+## batch_success_53_eval_data -> batch_success_53_eval_data_eef
+  observation.state  shape 14D  max|Δ| = 0.000e+00  mean|Δ| = 0.000e+00  MATCH
+  action             shape 14D  max|Δ| = 0.000e+00  mean|Δ| = 0.000e+00  MATCH

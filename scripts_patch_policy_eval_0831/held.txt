@@ -1,0 +1,4 @@
+batch_success_361            held(all channels identical to previous frame): 7653/300326 = 2.55%
+batch_success_53_eval_data   held(all channels identical to previous frame): 1124/40079 = 2.80%
+batch_success_505_eef        held(all channels identical to previous frame): 11679/418825 = 2.79%
+batch_success_533_eef        held(all channels identical to previous frame): 12004/443350 = 2.71%

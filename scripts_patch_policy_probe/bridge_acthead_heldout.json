@@ -1,0 +1,18 @@
+{
+  "checkpoint": "/mnt/robot_platform/jobs/patch_policy_tidy_up_stationery_le_batch_success_361_2026-08-20_21-21-58-821581/run/checkpoints/200000/pretrained_model",
+  "n_action_steps_deployed": 8,
+  "anchors": 3638,
+  "note": "arm joints are Hermite-bridged from the measured pose; grippers pass through raw",
+  "arm_mae_rad": {
+    "policy_bridge": 0.051172,
+    "oracle_bridge": 0.012426,
+    "raw_chunk": 0.079877,
+    "hold_state": 0.034598
+  },
+  "gripper_mae": {
+    "policy_bridge": 0.038401,
+    "oracle_bridge": 0.0,
+    "raw_chunk": 0.038401,
+    "hold_state": 0.011645
+  }
+}

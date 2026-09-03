@@ -1,0 +1,84 @@
+{
+  "checkpoint": "/mnt/robot_platform/jobs/patch_policy_tidy_up_stationery_le_batch_success_361_2026-08-30_11-19-40-151329/run/checkpoints/100000/pretrained_model",
+  "dataset": "tidy_up_stationery_le/batch_success_53_eval_data",
+  "anchors": 2007,
+  "codebook_size": 16,
+  "rvq_layers": 2,
+  "possible_combinations": 256,
+  "used_combinations": 112,
+  "top10_share": 0.4559,
+  "top10": [
+    {
+      "code": [
+        4,
+        8
+      ],
+      "share": 0.1036
+    },
+    {
+      "code": [
+        4,
+        11
+      ],
+      "share": 0.0952
+    },
+    {
+      "code": [
+        15,
+        15
+      ],
+      "share": 0.0777
+    },
+    {
+      "code": [
+        15,
+        11
+      ],
+      "share": 0.0354
+    },
+    {
+      "code": [
+        4,
+        15
+      ],
+      "share": 0.0294
+    },
+    {
+      "code": [
+        4,
+        5
+      ],
+      "share": 0.0294
+    },
+    {
+      "code": [
+        4,
+        14
+      ],
+      "share": 0.0249
+    },
+    {
+      "code": [
+        13,
+        3
+      ],
+      "share": 0.0204
+    },
+    {
+      "code": [
+        3,
+        15
+      ],
+      "share": 0.0199
+    },
+    {
+      "code": [
+        13,
+        5
+      ],
+      "share": 0.0199
+    }
+  ],
+  "reconstruction_mae_normalised": 0.085321,
+  "reconstruction_mae_raw": 0.076887
+}

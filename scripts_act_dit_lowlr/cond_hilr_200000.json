@@ -1,0 +1,34 @@
+{
+  "checkpoint": "/mnt/robot_platform/jobs/act_dit_tidy_up_stationery_le_batch_success_361_2026-08-22_02-42-49-084576/run/checkpoints/200000/pretrained_model",
+  "objective": "diffusion",
+  "dataset": "tidy_up_stationery_le/batch_success_361",
+  "n_anchors": 32,
+  "noise_seed": 0,
+  "between_frame_spread_rad": 0.2447328476024972,
+  "delta_rad": {
+    "images_swapped": 0.0,
+    "state_swapped": 0.13255,
+    "state_swap_adaln": 0.13255,
+    "state_swap_token": 0.0,
+    "state_zeroed": 0.191564
+  },
+  "delta_frac_of_spread": {
+    "images_swapped": 0.0,
+    "state_swapped": 0.5416,
+    "state_swap_adaln": 0.5416,
+    "state_swap_token": 0.0,
+    "state_zeroed": 0.7827
+  },
+  "adaln_conditioning": {
+    "time_norm": 106.9029,
+    "state_norm": 6.8142,
+    "weight_col_norm_time": 26.7349,
+    "weight_col_norm_state": 38.7083,
+    "contribution_time": 1990.4613,
+    "contribution_state": 48.888
+  },
+  "velocity_field": {
+    "spread_over_t": 0.562002,
+    "magnitude": 1.057172
+  }
+}

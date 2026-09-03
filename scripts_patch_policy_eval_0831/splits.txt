@@ -1,0 +1,24 @@
+## episode counts
+
+batch_success_53_eval_data         53 episodes
+batch_success_361                 363 episodes
+batch_success_505                 505 episodes
+batch_success_361_eef             363 episodes
+batch_success_505_eef             505 episodes
+batch_success_533_eef             535 episodes
+
+## cross-space identity (observation.velocity)
+
+batch_success_505 vs _eef, shared episodes: 505 / 505
+53-episode eval set inside batch_success_361         : 0
+53-episode eval set inside batch_success_505         : 0
+53-episode eval set inside batch_success_361_eef     : 0
+53-episode eval set inside batch_success_505_eef     : 0
+53-episode eval set inside batch_success_533_eef     : 0
+
+## EEF held-out split (action fingerprint, the key the harness filters on)
+
+533_eef episodes unseen by patch_policy(505_eef):        67
+533_eef episodes unseen by BOTH it and act_eef(361_eef): 18
+unseen-by-505 indices: [0, 8, 11, 12, 20, 29, 31, 32, 33, 34, 67, 73, 75, 95, 101, 124, 152, 167, 185, 200, 201, 220, 225, 226, 227, 230, 234, 236, 238, 241, 242, 245, 259, 294, 301, 317, 318, 319, 325, 328, 330, 332, 336, 340, 345, 355, 362, 363, 364, 366, 375, 384, 391, 398, 407, 409, 421, 425, 430, 434, 435, 438, 452, 459, 474, 475, 506]
+unseen-by-both indices: [0, 8, 11, 12, 20, 29, 31, 32, 33, 34, 67, 73, 75, 95, 101, 124, 152, 167]

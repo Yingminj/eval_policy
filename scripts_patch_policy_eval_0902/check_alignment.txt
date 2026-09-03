@@ -1,0 +1,7 @@
+== patch_policy eef 200k
+patch_policy: n_obs_steps=2, action window -1..49, computed action offset 1
+negative control fired at 8 of 8 probes (a held command cannot fire it)
+alignment OK: observation anchor = newest frame, action offset = n_obs_steps - 1
+== act_eef 505 200k
+act_eef: n_obs_steps=1, action window 0..99, computed action offset 0
+alignment OK: observation anchor = newest frame, action offset = n_obs_steps - 1

@@ -1,0 +1,8 @@
+### vqbet_100k
+patch_policy: n_obs_steps=5, action window -4..49, computed action offset 4
+negative control fired at 8 of 8 probes (a held command cannot fire it)
+alignment OK: observation anchor = newest frame, action offset = n_obs_steps - 1
+### eef_200k
+patch_policy: n_obs_steps=2, action window -1..49, computed action offset 1
+negative control fired at 7 of 8 probes (a held command cannot fire it)
+alignment OK: observation anchor = newest frame, action offset = n_obs_steps - 1

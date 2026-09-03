@@ -1,0 +1,42 @@
+# ===== Python =====
+__pycache__/
+*.pyc
+*.pyo
+.ipynb_checkpoints/
+
+# ===== 评估结果（只保留在本地，不进 git）=====
+results/
+**/results/
+
+# ===== 大型产物 =====
+*.npy
+*.npz
+*.ckpt
+*.pt
+*.pth
+*.safetensors
+*.mp4
+*.gif
+*.h5
+*.hdf5
+
+# ===== 日志 =====
+*.log
+
+# ===== 测试生成的中间数据 =====
+test_img/
+**/test_img/
+
+# ===== 系统/编辑器 =====
+.DS_Store
+*.swp
+.idea/
+.vscode/
+
+# ===== 可选：如果 json/png/txt 也基本是运行产物，取消下面的注释 =====
+# *.json
+# !**/config*.json      # 保留配置文件
+# !**/summary*.json     # 保留摘要
+# *.png
+# *.txt
+# !requirements.txt

@@ -1,0 +1,35 @@
+{
+  "vqbet_100k": {
+    "median_s": 0.03,
+    "p10_s": 0.0298,
+    "p90_s": 0.031,
+    "n_action_steps": 50,
+    "n_obs_steps": 5,
+    "encoder_images_per_call": 15,
+    "window_s": 1.667,
+    "duty": 0.018,
+    "denoise_steps": null
+  },
+  "eef_200k": {
+    "median_s": 0.2967,
+    "p10_s": 0.2958,
+    "p90_s": 0.298,
+    "n_action_steps": 50,
+    "n_obs_steps": 2,
+    "encoder_images_per_call": 6,
+    "window_s": 1.667,
+    "duty": 0.178,
+    "denoise_steps": 100
+  },
+  "acteef_361": {
+    "median_s": 0.0066,
+    "p10_s": 0.0065,
+    "p90_s": 0.0067,
+    "n_action_steps": 100,
+    "n_obs_steps": 1,
+    "encoder_images_per_call": 3,
+    "window_s": 3.333,
+    "duty": 0.002,
+    "denoise_steps": null
+  }
+}

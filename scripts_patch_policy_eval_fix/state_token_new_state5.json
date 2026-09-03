@@ -1,0 +1,15 @@
+{
+  "checkpoint": "/mnt/robot_platform/jobs/patch_policy_tidy_up_stationery_le_batch_success_361_2026-08-30_11-27-35-272413/run/checkpoints/200000/pretrained_model",
+  "n_obs_steps": 5,
+  "tokens_per_frame": 769,
+  "n_memory_slots": 3846,
+  "n_state_slots": 5,
+  "fair_share": 0.0013000520020800832,
+  "attn_mass_state": 0.011246934533119202,
+  "attn_mass_time_token": 0.0049924192717298865,
+  "norm_state_slot": 5.804262399673462,
+  "norm_patch_slot": 7.599339604377747,
+  "norm_ratio_state_over_patch": 0.7637851052649107,
+  "anchors": 16,
+  "attn_mass_over_fair_share": 8.651142042875291
+}
