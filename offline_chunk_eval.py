@@ -676,11 +676,17 @@ def summarise(acc: ChunkErrorAccumulator, a_std: torch.Tensor, horizon: int, nam
     """Raw-unit and std-normalised reductions of one accumulator."""
     mae_hj = acc.mae_per_horizon_joint()
     norm_hj = mae_hj / a_std.double().clamp_min(1e-8)
+    # Per-joint normalisation before the sqrt, so norm_rmse / norm_mae is a scale-free
+    # tail ratio comparable to 1.2533 (normal) / 1.4142 (Laplace).
+    norm_rmse = (acc._safe(acc.sq_sum) / a_std.double().clamp_min(1e-8).pow(2)).mean().sqrt().item()
+    norm_mae = norm_hj.mean().item()
     cuts = [c for c in (1, 10, 25, 50, horizon) if c <= horizon]
     return {
         "mae": acc.mae(),
         "rmse": acc.rmse(),
-        "norm_mae": norm_hj.mean().item(),
+        "norm_mae": norm_mae,
+        "norm_rmse": norm_rmse,
+        "tail_ratio": norm_rmse / max(norm_mae, 1e-12),
         "mae_at_horizon": {str(c): acc.mae(upto=c) for c in cuts},
         "norm_mae_at_horizon": {str(c): norm_hj[:c].mean().item() for c in cuts},
         "mae_per_horizon": [round(v, 6) for v in acc.mae_per_horizon().tolist()],
@@ -719,6 +725,12 @@ def selftest() -> None:
     b.update(torch.cat([p1, p2]), torch.cat([g1, g2]), torch.cat([v, v]))
     assert torch.allclose(a.mae_per_horizon(), b.mae_per_horizon())
     assert abs(a.mae() - 4.0) < 1e-12, a.mae()
+
+    # with unit a_std and no padding, the normalised pair must collapse onto the raw pair
+    s = summarise(b, torch.ones(1), horizon=2, names=["j0"])
+    assert abs(s["norm_mae"] - s["mae"]) < 1e-12, s
+    assert abs(s["norm_rmse"] - s["rmse"]) < 1e-12, s
+    assert abs(s["tail_ratio"] - 21**0.5 / 4.0) < 1e-12, s["tail_ratio"]
     print("selftest OK (accumulator)")
 
 
@@ -911,7 +923,7 @@ def main() -> None:
     for k, v in agg.items():
         delta = f"{100 * (v['mae'] - raw) / raw:+6.1f}% vs raw" if k.startswith("filt_") else ""
         print(f"  {k:<18} mae={v['mae']:.5f}  rmse={v['rmse']:.5f}  "
-              f"norm_mae={v['norm_mae']:.5f}  {delta}")
+              f"norm_mae={v['norm_mae']:.5f}  tail={v['tail_ratio']:.2f}  {delta}")
     for k in ("policy_raw", "policy_deployed"):
         print(f"  {k} vs null: {null / max(agg[k]['mae'], 1e-12):.2f}x")
     if args.out:
