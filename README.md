@@ -150,9 +150,17 @@ runs/ 内各目录的 README 描述了当次实验的 checkpoint、命令与关�
 ### 标准 prompt（直接复制，替换尖括号里的内容）
 
 ```text
-You are setting up an offline policy evaluation experiment in the repo
-/home/kewei/YING/paper/eval_policy. Work autonomously; ask me only if a
-required path does not exist.
+You are setting up an offline policy evaluation experiment in the eval_policy
+repo. Work autonomously. Every <...> below must be filled in before you start:
+if any of them is still a placeholder, or the path it names does not exist on
+this machine, stop and ask me for it — do not guess a path, do not substitute
+one you found elsewhere in the filesystem or in a prior report.
+
+PATHS (fill in; all absolute)
+- eval_policy repo (contains offline_chunk_eval.py and runs/): <abs path>
+- report repo, where experiment_report/ lives: <abs path>
+- deploy checkout driving the robot (--vlahost-src, contains
+  lerobot/rollout/trajectory.py): <abs path>
 
 GOAL
 <one sentence: the question this experiment must answer, e.g. "Does
@@ -164,7 +172,7 @@ SUBJECTS
   short name for each>
 - eval dataset(s): <abs path(s)>
 - training dataset(s) each checkpoint actually used: <abs path(s)>  # for --train-root
-- python interpreter: <e.g. /opt/robot-platform/train-venv/bin/python>
+- python interpreter that trained these checkpoints: <abs path>
 - deploy config governing the executed window: <abs path to deploy_config_*.yaml>
 
 STEP 1 — READ BEFORE YOU WRITE ANYTHING
@@ -175,14 +183,13 @@ the experiment design (do not start coding before this summary):
   2. The policy's training + inference code (modeling_*.py, configuration_*.py):
      n_obs_steps, chunk size field name, predict_action_chunk vs select_action,
      whether the head samples noise.
-  3. The deploy path: ~/YING/lerobot_vlahost/lerobot/rollout/trajectory.py,
-     strategies/core.py, and the deploy config above (inference.n_action_steps).
+  3. The deploy path: <deploy checkout>/lerobot/rollout/trajectory.py and
+     strategies/core.py, plus the deploy config above (inference.n_action_steps).
   4. The datasets' meta/info.json + meta/stats.json and each checkpoint's
      config.json / train_config.json (training set, steps, seed, batch size).
-  5. One prior run as the template for shape and rigour:
-     runs/scripts_patch_policy_eval_0902/ (README.md, run_eval.sh, summarise.py)
-     and its report at
-     /home/kewei/YING/paper/policy/experiment_report/patch_policy/patch_policy-eef-independent-eval-2026-09.md
+  5. One prior run as the template for shape and rigour: the newest directory
+     under <eval_policy repo>/runs/ (its README.md, run_*.sh, summarise.py) and
+     the report it points at under <report repo>/experiment_report/.
 
 STEP 2 — BUILD THE EXPERIMENT
 Create runs/<YYYYMMDD>_<topic>/ and build there. Rules:
@@ -213,7 +220,7 @@ STEP 4 — DELIVERABLES
      commands, a file->purpose->report-section table, deviations from the
      previous run's harness, and any trap you hit.
   b) A report at
-     /home/kewei/YING/paper/policy/experiment_report/<policy>/<policy>-<topic>-<YYYY-MM>.md,
+     <report repo>/experiment_report/<policy>/<policy>-<topic>-<YYYY-MM>.md,
      in Chinese, in the shape of the template report above:
        - header block: eval set (with ep/frame/anchor counts), checkpoints table,
          measurement date + machine + interpreter, path to scripts+raw results,
