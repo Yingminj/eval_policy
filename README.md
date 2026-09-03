@@ -100,8 +100,6 @@ $PY offline_chunk_eval.py --checkpoint /mnt/robot_platform/jobs/<job>/run/checkp
 | `scripts_patch_policy_compare` | ACT 头 vs 扩散头对比（消融/扫描/延迟） | patch_policy/ |
 | `scripts_patch_policy_eval_fix` | 第三代 harness（+观测历史） | patch_policy/ |
 | `scripts_patch_policy_eval_0831` | 第四代 harness（顶层脚本的来源） | patch_policy/ |
-| `scripts_patch_policy_eval_0902` | 与 0831 逐字节相同，EEF 独立评测集 | patch_policy/ |
-| `scripts_vita_chunk` | VITA chunk 部署平滑性分析（seam jump 等指标族） | vita/ |
 
 runs/ 内各目录的 README 描述了当次实验的 checkpoint、命令与关键读数。
 各目录内的 harness 副本是历史快照，新实验请用顶层 `offline_chunk_eval.py`。
