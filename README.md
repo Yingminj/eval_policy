@@ -20,10 +20,18 @@ action chunk，与示教动作对比。支持 `act` / `act_dit` / `patch_policy`
 - **预测器**（每个都在同一批 anchor、同一 padding mask 上评分）：
   `policy_raw`（策略原始输出，截断到执行窗口）、`policy_deployed`（过完部署重写）、
   空基线 `hold_state`（保持当前关节角）/ `train_mean`（训练集动作均值）
-- **指标**（每个预测器都给一份）：`mae`、`rmse`、`norm_mae`（按训练集 action std 归一）、
+- **指标**（每个预测器都给一份；指标集固定不可选——同一 checkpoint 的两次 run 必须能直接 diff）：
+  `mae`、`rmse`、`norm_mae` / `norm_rmse`（按训练集 action std 逐关节归一）、
+  `tail_ratio = norm_rmse / norm_mae`（尺度无关的尾部比，正态 1.2533、拉普拉斯 1.4142；
+  越大说明误差越集中在少数尖峰而不是均匀偏一点）、
   `mae_at_horizon[k]` / `norm_mae_at_horizon[k]`（前 k 步均值，k ∈ 1/10/25/50/horizon）、
   `mae_per_horizon[k]`（逐步曲线）、`mae_per_joint` / `norm_mae_per_joint`、
   `anchor_action_steps`（有效计数）。累加器为流式求和，anchor 数不影响显存
+- **acc@τ**：`acc_at_tau` / `acc_at_tau_at_horizon[k]` / `acc_at_tau_per_joint` ——
+  落在阈值内的 (step, joint) 对占比，τ ∈ 0.1/0.25/0.5/1.0 倍**该关节自己的** action std
+  （动作向量混单位：14 个手臂关节是弧度、2 个夹爪是 [0,1]，一个统一的弧度阈值没有意义）。
+  始终计算不设开关；padding 步在比较**之后**才掩掉，否则它误差恒为 0，会在每个阈值上算作命中
+- **末端位姿误差** `eef` / `eef_aggregate`，见下节
 - **去污染**：`--train-root`（可重复）对训练集 episode 的 action 数组做 SHA1 指纹，
   命中的 eval episode 自动剔除并计数（数据集目录名不可信，只有数据本身作数）；
   `--keep-only-contaminated` 反向只留污染 episode，作同场次对照（同光照/布局，
@@ -32,7 +40,7 @@ action chunk，与示教动作对比。支持 `act` / `act_dit` / `patch_policy`
   `lerobot/rollout/trajectory.py`（`--vlahost-src`，默认 `~/YING/lerobot_vlahost`），
   不复刻实现。滤波器固定顺序：`rollbacks` → `gripper_loops` → `smoothing` →
   `excursions` → `bridge`（K=40 三次 Hermite 桥，从实测关节角起步）→ `gripper_clip`
-  （驱动层 [0,1] 钳位）。`--filters all|none|逗号列表` 选级（无论怎么写都按固定顺序生效）、
+  （驱动层 [0,1] 钳位）。`--filters` 选级（**默认 `none`**；`all` 或逗号列表，无论怎么写都按固定顺序生效）、
   `--filter-ablation` 逐级归因（`filt_0_clip_only` → `filt_5_bridge` 累积阶梯，
   外加 `filt_bridge_only`；共享累积结果，几乎不额外耗时）、
   `--n-action-steps` 截断到部署真正下发的执行窗口（默认 50）
@@ -47,13 +55,45 @@ action chunk，与示教动作对比。支持 `act` / `act_dit` / `patch_policy`
 - **轨迹导出**：`--dump-traces x.npz` 存第一个评测集的逐 anchor `pred`/`pred_raw`/`gt`/
   `state`/`valid`/`episode_index`/`frame_index`，供 `plot_traces.py` 画图；
   `--trace-anchors`（默认 200）限量，`--trace-episode N`（可重复）指定 episode
-- **自检**：`--selftest` 校验累加器（padding 不泄漏、分批等价）与部署重写
+- **自检**：`--selftest` 校验累加器（padding 不泄漏、分批等价、acc@τ 不把 padding 记成命中、
+  归一化指标在 std=1 时塌回原始指标）、末端位姿两条路径（零误差、左右不串、不跨 batch/horizon
+  泄漏、夹爪列不动位姿、欧拉角 ±π 不炸、角度不超过 π、arccos 定义域已钳位）与部署重写
   （桥从实测位姿起步、K-1 步汇合、零初速、不原地改输入、滤波器选择顺序），
-  主流程前自动运行，坏 build 不出数
+  主流程前自动运行，坏 build 不出数。MJCF 解析不了时末端那节打印跳过原因而不是失败
 
 不能复现的部分（脚本 docstring 有详述）：闭环（每个 anchor 都从示教状态开环起步）、
 图像通路（部署是 JPEG q90 + `INTER_AREA` 缩放，训练是视频帧 + `INTER_LINEAR`）、
 夹爪观测（训练是指令回显，部署是标定后的真实反馈）。
+
+### 末端位姿误差（EEF）
+
+关节空间的 MAE 回答不了"夹爪差了几毫米"。脚本对左右两臂各出 位置(m) 与 姿态(rad) 两个通道，
+共 4 通道，走和主指标同一套累加器：`mean_per_channel` / `rms_per_channel` /
+`mean_at_horizon[k]` / `mean_per_horizon` / `acc_at_tau` / `anchor_action_steps`。
+**故意不给标量汇总**——把米和弧度平均出来的数，没人说得清它为什么动。
+
+两条路径，按动作空间自动选：
+
+- **EEF 空间（直接算，不做运动学）**：动作名里能凑出两组完整的
+  `*_x/_y/_z/_roll/_pitch/_yaw` 时走这条（按名字判，不按宽度——14 不说明是哪 14）。
+  位置误差是两点的**欧氏距离**，不是逐轴平均：`mae_per_joint` 已经给了逐轴视角，而
+  各向同性高斯下两者之比恰好是 2（实测 2.00），所以这里的毫米数约是 09-03 报告里那一列的两倍。
+- **关节空间（MJCF 正向运动学）**：按路径导入生成 EEF 数据集的那份实现
+  （`robot_data_platform/tool/tr_joint_to_eef.py` 的 `MjcfForwardKinematics`），不复刻。
+  姿态误差是四元数之间的**测地角**，不是欧拉角相减（rpy 在 ±π 处翻转、近万向节锁病态，
+  而腕关节整天待在那儿）。
+
+这里的 acc@τ 用**绝对**阈值（5mm+0.01rad / 10mm+0.025rad / 25mm+0.05rad / 50mm+0.1rad）：
+毫米就是毫米，与 action std 无关。只对 `policy_raw` / `policy_deployed` / `hold_state` /
+`train_mean` 四个核心预测器算，不覆盖 `filt_*` 消融梯级——那是关节空间的问题，多跑一遍 FK
+换不来答案。
+
+默认自动开启：MJCF 能解析、且数据集关节名覆盖左右两条链就算，否则打印跳过原因继续跑
+（`eef_aggregate` 里留 `{"skipped": 原因}`）。`--no-eef` 强制关闭；`--eef-tool` /
+`--eef-mjcf` 换实现与模型，默认分别是
+`/home/kewei/YING/robot_data_platform/tool/tr_joint_to_eef.py` 与
+`/home/kewei/YING/Apex_Deploy_new/robot_node/marvin_description/mjcf/matrix/m6_696.xml`
+（`tr_joint_to_eef.DEFAULT_MJCF` 指向本机不存在的兄弟路径，所以脚本里另给了一份）。
 
 ### 用法
 
@@ -75,10 +115,14 @@ $PY offline_chunk_eval.py --checkpoint /mnt/robot_platform/jobs/<job>/run/checkp
 - 解释器必须是训练该 checkpoint 的环境；`act_dit`（EMA）需
   `export PYTHONPATH=/home/kewei/YING/lerobot_vlahost/src` 并用 `conda run -n lerobot`。
 - `--train-root` 指向该 run 实际训练用的数据集，不同 run 不同。
+- `--filters` 默认是 `none`：EEF 那条部署链没有滤波器栈，默认按"不重写"算。要评带滤波器的
+  部署链就显式写 `--filters all`，或用 `--filter-ablation` 拿逐级梯级（上面的示例命令即如此）。
 - 常用旋钮：`--stride`（anchor 采样间隔）、`--max-anchors-per-dataset`（快速冒烟）、
-  `--device`（默认 cuda）、`--latency-steps`（延迟敏感性）、`--keep-only-contaminated`（同场次对照）。
-- 输出 JSON 顶层是平铺的：`aggregate`（各预测器汇总）、`per_dataset`（每个 `--dataset-root`
-  一项，含 `episodes_dropped_as_contaminated` / `anchors` / 各预测器指标）、以及运行元信息
+  `--device`（默认 cuda）、`--latency-steps`（延迟敏感性）、`--keep-only-contaminated`（同场次对照）、
+  `--no-eef`（跳过末端位姿那一遍 FK）。
+- 输出 JSON 顶层是平铺的：`aggregate`（各预测器汇总）、`eef_aggregate`（末端位姿，或
+  `{"skipped": 原因}`）、`per_dataset`（每个 `--dataset-root` 一项，含
+  `episodes_dropped_as_contaminated` / `anchors` / 各预测器指标 / `eef`）、以及运行元信息
   （`checkpoint`、`policy_type`、`chunk_size`、`executed_horizon`、`latency_steps`、
   `deploy_filters`、`vlahost_src`、`seed` 等）；表格汇总与画图工具见
   `runs/scripts_patch_policy_eval_0831/summarise.py`、`runs/scripts_act_eval_test/plot_horizon.py`。

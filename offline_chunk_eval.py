@@ -722,8 +722,12 @@ def evaluate(
     # EEF error is scored only for these: the filt_* rungs exist to attribute a joint-space
     # delta to one filter, and running FK on all of them multiplies the cost of the pass
     # for a number that answers a different question.
-    eef_keys = [k for k in ("policy_raw", "policy_deployed", "hold_state", "train_mean")
-                if k in keys]
+    # The seed draws are in: without a pose-error spread between two draws of the same
+    # checkpoint there is no floor to read the pose-error *differences* against, which is
+    # the same argument that put seed_repeat in the joint-space table.
+    eef_keys = [k for k in keys
+                if k in ("policy_raw", "policy_deployed", "hold_state", "train_mean")
+                or k.startswith("seed_")]
     overall_eef: dict[str, ChunkErrorAccumulator] = {}
     eef_fk = None
     eef_skip_reason = None if eef else "disabled with --no-eef"
@@ -817,6 +821,7 @@ def evaluate(
                 pred = policy.predict_action_chunk(processed)  # normalised, (B, C, J)
             pred = postprocessor(pred).float().cpu()           # raw joint units
             pred = pred[:, :horizon]                           # only this much is sent
+            seed_chunks: dict[str, torch.Tensor] = {}
             if is_patch and seed_repeat:
                 # Same observation, different diffusion noise. The spread between draws is
                 # the floor below which any difference between checkpoints is sampling.
@@ -824,6 +829,7 @@ def evaluate(
                     torch.manual_seed(seed + 1 + r)
                     alt = postprocessor(policy.model.predict(processed)).float().cpu()
                     acc[f"seed_{r + 1}"].update(alt[:, :horizon], gt, valid)
+                    seed_chunks[f"seed_{r + 1}"] = alt[:, :horizon]
             # what /action_chunk gets, under the requested filter set
             deployed = deploy_rewrite_batch(ops, pred, state, filters)
 
@@ -841,12 +847,12 @@ def evaluate(
                 # gt is the zero of an error magnitude, so the accumulator's |pred - gt|
                 # and (pred - gt)^2 become the mean and RMS of the pose error itself.
                 zero = None
-                for k, chunk in (
+                for k, chunk in [
                     ("policy_raw", pred),
                     ("policy_deployed", deployed),
                     ("hold_state", state.unsqueeze(1).expand_as(gt)),
                     ("train_mean", a_mean.view(1, 1, -1).expand_as(gt)),
-                ):
+                ] + list(seed_chunks.items()):
                     if k not in acc_eef:
                         continue
                     err = eef_fk.errors(chunk, gt)
