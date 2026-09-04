@@ -26,7 +26,7 @@ results/
 # ===== 测试生成的中间数据 =====
 test_img/
 **/test_img/
-
+local_prompt.md
 # ===== 系统/编辑器 =====
 .DS_Store
 *.swp

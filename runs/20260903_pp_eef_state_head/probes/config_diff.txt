@@ -1,0 +1,112 @@
+## 1. job-level training config
+
+| field | pp_eef_state | pp_eef_nostate | pp_eef_act5 | acteef_533 |
+|---|---|---|---|---|
+| `dataset_repo_id` | tidy_up_stationery_le/batch_success_505_eef | tidy_up_stationery_le/batch_success_505_eef | tidy_up_stationery_le/batch_success_505_eef | tidy_up_stationery_le/batch_success_533_eef |
+| `steps` | 200000 | 200000 | 200000 | 200000 |
+| `batch_size` | 16 | 16 | 16 | 16 |
+| `seed` | 1000 | 1000 | 1000 | 1000 |
+| `num_workers` | 4 | 4 | 4 | 4 |
+| `save_freq` | 100000 | 50000 | 50000 | 10000 |
+| `resume` | False | False | False | True |
+| final `current_loss` | 0.017 | 0.018 | 0.033 | 0.053 |
+| final `grad_norm` | 0.216 | 0.222 | 0.82 | 2.745 |
+| final `current_lr` | 5.5e-05 | 5.5e-05 | 5.5e-05 | 1e-05 |
+| wall-clock (s) | 16108 | 16440 | 29557 | 18 |
+| node | mgmt01 | gpu03 | gpu04 | gpu01 |
+
+## 2. policy config.json: fields that differ across the three patch_policy weights
+
+| field | pp_eef_state | pp_eef_nostate | pp_eef_act5 |
+|---|---|---|---|
+| `action_head` | diffusion | diffusion | act |
+| `gpt_block_size` | 2 | 2 | 25 |
+| `n_obs_steps` | 2 | 2 | 5 |
+| `n_vqvae_training_steps` | 5000 | 5000 | 20000 |
+| `use_robot_state` | True | False | False |
+
+fields compared: 65, differing: 5
+
+## 3. fields that are equal across all three (the controls)
+
+- `action_chunk_size` = 50  [same]
+- `n_action_steps` = 50  [same]
+- `vision_encoder` = dino_patch  [same]
+- `freeze_vision_encoder` = True  [same]
+- `resize_shape` = [224, 224]  [same]
+- `dim_model` = 512  [same]
+- `optimizer_lr` = 5.5e-05  [same]
+- `num_inference_steps` = None  [same]
+- `beta_schedule` = squaredcos_cap_v2  [same]
+- `normalization_mapping` = {'VISUAL': 'IDENTITY', 'STATE': 'MIN_MAX', 'ACTION': 'MIN_MAX'}  [same]
+
+## 4. where the moved fields are actually read
+
+
+### `use_robot_state`
+  configuration_patch_policy.py:378: if self.use_robot_state and self.robot_state_feature is None:  <- in class `PatchPolicyConfig`
+  configuration_patch_policy.py:379: raise ValueError("`use_robot_state=True` but the dataset provides no robot state feature.")  <- in class `PatchPolicyConfig`
+  modeling_patch_policy.py:348: one step later. With `use_robot_state`, a projected state token is appended to the block.  <- in class `PatchPolicyModel`
+  modeling_patch_policy.py:363: self.tokens_per_frame = self.n_patches_per_camera * self.num_images + int(config.use_robot_stat  <- in class `PatchPolicyModel`
+  modeling_patch_policy.py:366: if config.use_robot_state:  <- in class `PatchPolicyModel`
+  modeling_patch_policy.py:431: if self.config.use_robot_state:  <- in class `PatchPolicyModel`
+
+### `n_obs_steps`
+  configuration_patch_policy.py:332: self.gpt_block_size = self.n_obs_steps  <- in class `PatchPolicyConfig`
+  configuration_patch_policy.py:333: if self.gpt_block_size < self.n_obs_steps:  <- in class `PatchPolicyConfig`
+  configuration_patch_policy.py:335: f"`gpt_block_size` ({self.gpt_block_size}) must be at least `n_obs_steps` "  <- in class `PatchPolicyConfig`
+  configuration_patch_policy.py:336: f"({self.n_obs_steps})."  <- in class `PatchPolicyConfig`
+  configuration_patch_policy.py:354: return self.n_obs_steps + self.action_chunk_size - 1  <- in class `PatchPolicyConfig`
+  configuration_patch_policy.py:383: return list(range(1 - self.n_obs_steps, 1))  <- in class `PatchPolicyConfig`
+  configuration_patch_policy.py:389: return list(range(1 - self.n_obs_steps, self.action_chunk_size))  <- in class `PatchPolicyConfig`
+  modeling_patch_policy.py:90: npatch: int, n_obs_steps: int, horizon: int, n_leading_tokens: int = 0
+  modeling_patch_policy.py:94: Shape `(horizon, n_leading_tokens + n_obs_steps * npatch)`. Decoder position `t` predicts the
+  modeling_patch_policy.py:101: n_patch_tokens = n_obs_steps * npatch
+  modeling_patch_policy.py:102: patch_block = generate_mask_matrix(npatch, n_obs_steps).squeeze(0).squeeze(0).bool()
+  modeling_patch_policy.py:107: obs_step = min(t_idx, n_obs_steps - 1)
+  modeling_patch_policy.py:233: self.cond_pos_emb = nn.Parameter(torch.zeros(1, 1 + config.n_obs_steps * n_patches, n_emb))  <- in class `TransformerForDiffusion`
+  modeling_patch_policy.py:254: block_causal_memory_mask(n_patches, config.n_obs_steps, horizon, n_leading_tokens=1),  <- in class `TransformerForDiffusion`
+  modeling_patch_policy.py:304: n_memory = config.n_obs_steps * n_patches  <- in class `PatchACTHead`
+  modeling_patch_policy.py:315: memory_mask = block_causal_memory_mask(n_patches, config.n_obs_steps, horizon)  <- in class `PatchACTHead`
+  modeling_patch_policy.py:421: """-> `(B, n_obs_steps, tokens_per_frame, feature_dim)`."""  <- in class `PatchPolicyModel`
+  modeling_patch_policy.py:422: batch_size, n_obs_steps = batch[OBS_IMAGES].shape[:2]  <- in class `PatchPolicyModel`
+  modeling_patch_policy.py:428: patch_tokens, "(b s n) p e -> b s (n p) e", b=batch_size, s=n_obs_steps, n=self.num_images  <- in class `PatchPolicyModel`
+  modeling_patch_policy.py:442: n_obs_steps = action_seq.shape[1] + 1 - action_chunk_size  <- in class `PatchPolicyModel`
+  modeling_patch_policy.py:444: [action_seq[:, i : i + action_chunk_size] for i in range(n_obs_steps)], dim=1  <- in class `PatchPolicyModel`
+  modeling_patch_policy.py:484: start = self.config.n_obs_steps - 1  <- in class `PatchPolicyModel`
+  modeling_patch_policy.py:566: OBS_IMAGES: deque(maxlen=self.config.n_obs_steps),  <- in class `PatchPolicy`
+  modeling_patch_policy.py:567: OBS_STATE: deque(maxlen=self.config.n_obs_steps),  <- in class `PatchPolicy`
+
+### `action_head`
+  configuration_patch_policy.py:312: if self.action_head not in ("vqbet", "diffusion", "act"):  <- in class `PatchPolicyConfig`
+  configuration_patch_policy.py:314: f"`action_head` must be one of 'vqbet', 'diffusion', 'act'. Got {self.action_head}."  <- in class `PatchPolicyConfig`
+  modeling_patch_policy.py:320: self.action_head = nn.Linear(config.dim_model, action_dim)  <- in class `PatchACTHead`
+  modeling_patch_policy.py:335: return self.action_head(out.transpose(0, 1))  <- in class `PatchACTHead`
+  modeling_patch_policy.py:372: if config.action_head == "vqbet":  <- in class `PatchPolicyModel`
+  modeling_patch_policy.py:377: elif config.action_head == "diffusion":  <- in class `PatchPolicyModel`
+  modeling_patch_policy.py:451: if self.config.action_head == "vqbet":  <- in class `PatchPolicyModel`
+  modeling_patch_policy.py:459: if self.config.action_head == "diffusion":  <- in class `PatchPolicyModel`
+  modeling_patch_policy.py:486: if self.config.action_head == "vqbet":  <- in class `PatchPolicyModel`
+  modeling_patch_policy.py:492: if self.config.action_head == "diffusion":  <- in class `PatchPolicyModel`
+  modeling_patch_policy.py:596: if self.config.action_head == "vqbet" and not self.model.head.vqvae_model.discretized.item():  <- in class `PatchPolicy`
+
+### `gpt_block_size`
+  configuration_patch_policy.py:327: if self.gpt_block_size is None:  <- in class `PatchPolicyConfig`
+  configuration_patch_policy.py:332: self.gpt_block_size = self.n_obs_steps  <- in class `PatchPolicyConfig`
+  configuration_patch_policy.py:333: if self.gpt_block_size < self.n_obs_steps:  <- in class `PatchPolicyConfig`
+  configuration_patch_policy.py:335: f"`gpt_block_size` ({self.gpt_block_size}) must be at least `n_obs_steps` "  <- in class `PatchPolicyConfig`
+  modeling_patch_policy.py:157: self.transformer.wpe = nn.Embedding(config.gpt_block_size * n_patches, config.gpt_hidden_dim)  <- in class `BlockCausalGPT`
+  modeling_patch_policy.py:163: mask = generate_mask_matrix(n_patches, config.gpt_block_size).bool()  <- in class `BlockCausalGPT`
+  modeling_patch_policy.py:170: assert t <= self.config.gpt_block_size, (  <- in class `BlockCausalGPT`
+  modeling_patch_policy.py:171: f"Cannot forward sequence of length {t}, block size is only {self.config.gpt_block_size}"  <- in class `BlockCausalGPT`
+
+### `n_vqvae_training_steps`
+  modeling_patch_policy.py:598: self.config.n_vqvae_training_steps, batch[ACTION]  <- under `action_head == "vqbet"`
+
+## 5. acteef_533, for the deploy comparison
+
+- type=act_eef, n_obs_steps=1, chunk_size=100, n_action_steps=100
+- deploy_config_eef.yaml asks for inference.n_action_steps = 60
+- pp_eef_state: action_chunk_size=50 -> the 60-step window is SHORT BY 10 steps
+- pp_eef_nostate: action_chunk_size=50 -> the 60-step window is SHORT BY 10 steps
+- pp_eef_act5: action_chunk_size=50 -> the 60-step window is SHORT BY 10 steps

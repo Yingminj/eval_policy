@@ -1,0 +1,45 @@
+## 1. does the chunk-rewriting code run on this config?
+
+- `deploy_config_eef.yaml`: inference.type = 'chunk', strategy = 'base', n_action_steps = 60
+- robot.type = 'marvain_m6_eef_ros', policy = ...act_eef_tidy_up_stationery_le_batch_success_533_eef_2026-08-27_14-48-42-880941
+- `strategies/factory.py`: 'base' -> BaseStrategy
+- `strategies/base.py:69` calls `send_next_action_chunk` when `engine.produces_chunks`,
+  which is what `inference.type: chunk` selects.  **The rewrite runs.**
+
+## 2. which stages are live
+
+| harness filter | deploy flag | live |
+|---|---|---|
+| `rollbacks` | ENABLE_REMOVE_SMALL_ROLLBACKS | **yes** |
+| `gripper_loops` | ENABLE_REMOVE_OPEN_GRIPPER_LOOPS | no |
+| `smoothing` | (unconditional call) | **yes** |
+| `excursions` | ENABLE_SMOOTH_LARGE_EXCURSIONS | no |
+| `bridge` | ENABLE_FIXED_K_REAL_STATE_BRIDGE | **yes** |
+| `gripper_clip` | driver `_prepare_action` | **yes** |
+
+`--filters rollbacks,smoothing,bridge,gripper_clip` is therefore the deploy stack.
+`--filters all` would be WRONG here: it adds two stages the robot has switched off.
+
+## 3. which columns each live stage touches
+
+`send_next_action_chunk` builds `arm_joint_keys = [k for k in ordered_keys if "gripper" not in k.lower()][:14]` and bridges `min(14, len(arm_joint_keys))` columns.
+The other stages take a literal `joint_count=14`, which is a column *count*, not a mask.
+
+| action space | width | arm_joint_keys | bridge covers | joint_count=14 covers | gripper cols |
+|---|---:|---:|---|---|---|
+| 16-D joint | 16 | 14 | cols 0-13 | cols 0-13 | [14, 15] |
+| 14-D EEF | 14 | 12 | cols 0-11 | cols 0-13 | [12, 13] |
+
+In the EEF space `joint_count=14` therefore sweeps the two gripper columns (12, 13)
+into the rollback and smoothing stages, while the bridge correctly skips them.
+That is deploy's behaviour, not a harness artefact; the harness reproduces it.
+
+## 4. the unforked harness does NOT reproduce it at width 14
+
+- `bridge`: forked vs unforked max|Δ| = 1.43375 (on the gripper columns: 1.43375)
+- `gripper_clip`: forked vs unforked max|Δ| = 0.49834 (on the gripper columns: 0.49834)
+- unforked `bridge` rewrites cols 0-13, i.e. it Hermite-bridges the two gripper
+  channels that deploy leaves alone; unforked `gripper_clip` is a no-op below width 16.
+- unforked `--filter-ablation`: **ValueError: Gripper indices [14, 15] are outside action width 14** (remove_open_gripper_loops hardcodes gripper indices 14/15)
+
+- at width 16 the fork is bit-identical to the unforked harness: **True**

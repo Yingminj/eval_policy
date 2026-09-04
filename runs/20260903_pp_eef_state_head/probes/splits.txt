@@ -1,0 +1,28 @@
+## episode counts
+
+batch_success_53_eval_data         53 episodes
+batch_success_53_eval_data_eef     53 episodes
+batch_success_361                 363 episodes
+batch_success_505                 505 episodes
+batch_success_361_eef             363 episodes
+batch_success_505_eef             505 episodes
+batch_success_533_eef             535 episodes
+
+## is the EEF eval set the same recordings as the joint eval set?
+
+observation.velocity fingerprints shared: 53 / 53
+EEF episodes with no joint counterpart: []
+episode-index permutation identity: True
+
+## contamination: eval episodes present in any training set
+
+batch_success_53_eval_data       in batch_success_361       : velocity   0  action   0
+batch_success_53_eval_data_eef   in batch_success_361       : velocity   0  action   0
+batch_success_53_eval_data       in batch_success_505       : velocity   0  action   0
+batch_success_53_eval_data_eef   in batch_success_505       : velocity   0  action   0
+batch_success_53_eval_data       in batch_success_361_eef   : velocity   0  action   0
+batch_success_53_eval_data_eef   in batch_success_361_eef   : velocity   0  action   0
+batch_success_53_eval_data       in batch_success_505_eef   : velocity   0  action   0
+batch_success_53_eval_data_eef   in batch_success_505_eef   : velocity   0  action   0
+batch_success_53_eval_data       in batch_success_533_eef   : velocity   0  action   0
+batch_success_53_eval_data_eef   in batch_success_533_eef   : velocity   0  action   0

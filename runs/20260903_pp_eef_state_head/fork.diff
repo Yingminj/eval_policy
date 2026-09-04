@@ -1,0 +1,72 @@
+--- /home/kewei/YING/paper/eval_policy/offline_chunk_eval.py	2026-09-03 19:24:40.945993788 -0700
++++ offline_chunk_eval.py	2026-09-03 21:25:28.270052992 -0700
+@@ -110,6 +110,23 @@
+ #: ``send_next_action_chunk``'s fixed bridge length.  Not configurable there either.
+ DEPLOY_BRIDGE_STEPS = 40
+ 
++#: FORK (EEF): which action dimensions deploy treats as "arm" and which as grippers.
++#: ``send_next_action_chunk`` builds ``arm_joint_keys = [k for k in ordered_keys if
++#: "gripper" not in k.lower()][:14]`` and bridges ``min(14, len(arm_joint_keys))`` of them;
++#: the driver clips the gripper columns.  In 16-D joint space that is 14 arms + columns
++#: 14/15, which is what the unforked harness hardcodes.  In the 14-D EEF space it is
++#: **12** pose dims + columns **12/13** -- so the unforked constants bridge the two gripper
++#: channels deploy never bridges, and clip nothing.  Set from the dataset's action names.
++ACTION_LAYOUT = {"n_bridge": 14, "grippers": (14, 15)}
++
++
++def set_action_layout(names: list[str]) -> dict:
++    """Deploy's own rule, applied to this dataset's action names."""
++    grippers = tuple(i for i, n in enumerate(names) if "gripper" in n.lower())
++    arm = [i for i, n in enumerate(names) if "gripper" not in n.lower()][:14]
++    ACTION_LAYOUT.update(n_bridge=len(arm), grippers=grippers)
++    return dict(ACTION_LAYOUT)
++
+ 
+ def load_deploy_trajectory_ops(vlahost_src: Path):
+     """Import ``lerobot/rollout/trajectory.py`` from the deploy checkout, by path.
+@@ -189,7 +206,7 @@
+         out = chunk.clone()
+         bridge = min(DEPLOY_BRIDGE_STEPS, chunk.shape[0])
+         join = bridge - 1
+-        for i in range(min(14, chunk.shape[1])):
++        for i in range(min(ACTION_LAYOUT["n_bridge"], chunk.shape[1])):  # FORK: was min(14, ...)
+             end_velocity = (
+                 chunk[join + 1, i] - chunk[join, i] if join + 1 < chunk.shape[0] else 0.0
+             )
+@@ -204,10 +221,11 @@
+             )
+         return out
+     if name == "gripper_clip":
+-        if chunk.shape[1] < 16:
++        grip = [i for i in ACTION_LAYOUT["grippers"] if i < chunk.shape[1]]  # FORK: was 14:16
++        if not grip:
+             return chunk
+         out = chunk.clone()
+-        out[:, 14:16] = out[:, 14:16].clamp(0.0, 1.0)
++        out[:, grip] = out[:, grip].clamp(0.0, 1.0)
+         return out
+     raise ValueError(f"unknown deploy filter {name!r}; known: {DEPLOY_FILTER_ORDER}")
+ 
+@@ -250,6 +268,13 @@
+     out = {"filt_0_clip_only": clip(chunk)}
+     current = chunk
+     for i, name in enumerate(("rollbacks", "gripper_loops", "smoothing", "excursions", "bridge"), 1):
++        # FORK: ``remove_open_gripper_loops`` hard-fails at action width < 16 (its gripper
++        # indices are 14/15).  It is also ENABLE_REMOVE_OPEN_GRIPPER_LOOPS = False on the
++        # robot, so skipping it keeps the ladder both runnable and deploy-faithful; the rung
++        # repeats the previous one so the key stays in the report.
++        if name == "gripper_loops" and chunk.shape[1] < 16:  # its indices are literally 14/15
++            out[ABLATION_KEYS[i]] = clip(current)
++            continue
+         current = apply_deploy_filter(ops, name, current, state)
+         out[ABLATION_KEYS[i]] = clip(current)
+     out["filt_bridge_only"] = clip(apply_deploy_filter(ops, "bridge", chunk, state))
+@@ -502,6 +527,8 @@
+         if n_joints is None:
+             n_joints = meta.features[ACTION]["shape"][0]
+             joint_names = meta.features[ACTION].get("names") or [f"j{i}" for i in range(n_joints)]
++            # FORK: teach the deploy rewrite this action space's arm/gripper split.
++            print(f"action layout: {set_action_layout(joint_names)}", flush=True)
+             for k in overall:
+                 overall[k] = ChunkErrorAccumulator(horizon, n_joints)
+ 
