@@ -44,6 +44,28 @@ harness reports both, on the same anchors and the same padding mask:
                           linearly interpolates onto the arms.
   * ``hold_state`` / ``train_mean`` — unchanged null baselines.
 
+Metrics
+-------
+Every variant is reduced the same way, and the reduction set is fixed rather than
+selectable: two runs of the same checkpoint must produce diffable reports, and a metric
+that appears only when someone thought to ask for it cannot be compared against a run
+where nobody did.  Alongside the MAE/RMSE family:
+
+  * ``acc_at_tau`` — fraction of (step, joint) pairs inside tau, for tau in
+    ``ACC_TAUS`` multiples of that joint's action std.  Per-joint rather than a flat
+    radian threshold because the action vector mixes 14 arm joints in radians with
+    grippers in [0, 1].  Always computed: it is one broadcast compare per batch, and
+    gating something that cheap costs more to maintain than to run.
+  * ``eef`` / ``eef_aggregate`` — end-effector position (m) and orientation (rad) error
+    for both arms, via the same MJCF forward kinematics
+    (``robot_data_platform/tool/tr_joint_to_eef.py``) that produced the EEF datasets.
+    Orientation error is the geodesic angle between quaternions, not a difference of
+    Euler angles, which wraps at pi and is ill-conditioned near gimbal lock.  This one
+    *is* conditional, because it costs an FK pass: it turns on by itself whenever the
+    MJCF resolves and the dataset's joint names cover both chains, reports why it did
+    not otherwise, and is forced off with ``--no-eef``.  It is scored for the four core
+    variants only, not the ``filt_*`` ablation rungs, which are a joint-space question.
+
 Everything else (contamination fingerprinting, checkpoint-owned normalisation, the
 padding mask, the streaming accumulator) is identical to the original harness.
 
@@ -263,8 +285,183 @@ def deploy_ablation_batch(ops, pred: torch.Tensor, state: torch.Tensor) -> dict:
 
 
 # --------------------------------------------------------------------------------------
+# end-effector pose error
+# --------------------------------------------------------------------------------------
+#: MJCF whose chains ``Apex_Deploy`` drives.  ``tr_joint_to_eef.DEFAULT_MJCF`` points at a
+#: sibling path that does not exist in this checkout, so the location is given here.
+DEFAULT_MJCF = Path(
+    "/home/kewei/YING/Apex_Deploy_new/robot_node/marvin_description/mjcf/matrix/m6_696.xml"
+)
+DEFAULT_EEF_FRAMES = ("left_tool", "right_tool")
+
+#: The FK implementation that produced the EEF datasets, loaded by path.
+DEFAULT_EEF_TOOL = Path("/home/kewei/YING/robot_data_platform/tool/tr_joint_to_eef.py")
+
+#: (position metres, orientation radians) pairs.  Unlike the joint-space thresholds these
+#: are absolute, because a millimetre is a millimetre regardless of the action std.
+EEF_TAUS = ((0.005, 0.01), (0.01, 0.025), (0.025, 0.05), (0.05, 0.1))
+EEF_CHANNELS = ["left_pos_m", "left_rot_rad", "right_pos_m", "right_rot_rad"]
+
+
+class EefPoseError:
+    """Forward kinematics on both arms, as a 4-channel error the accumulator can eat.
+
+    ``tr_joint_to_eef.MjcfForwardKinematics`` is loaded by path rather than reimplemented,
+    for the same reason the deploy rewrite is: it is the code that produced the EEF
+    datasets, and a second copy of an FK chain is a second thing to keep in sync.
+
+    Orientation error is the geodesic angle between quaternions, not a difference of Euler
+    angles -- rpy differences wrap at pi and blow up near gimbal lock, which is exactly
+    where a wrist joint spends its time.
+    """
+
+    def __init__(self, tool_path: Path, mjcf: Path, joint_names: list[str],
+                 frames: tuple[str, str] = DEFAULT_EEF_FRAMES):
+        spec = importlib.util.spec_from_file_location("_tr_joint_to_eef", tool_path)
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[spec.name] = module
+        spec.loader.exec_module(module)
+        # quaternion, not euler: see the class docstring
+        self.fk = module.MjcfForwardKinematics(
+            mjcf, joint_names, frames[0], frames[1], rotation_repr="quaternion"
+        )
+
+    @staticmethod
+    def _resolve(tool_path: Path, mjcf: Path, joint_names: list[str], frames):
+        """Return an instance, or ``None`` with a reason if this dataset cannot have one."""
+        if not tool_path.is_file():
+            return None, f"{tool_path} not found"
+        if not mjcf.is_file():
+            return None, f"{mjcf} not found"
+        try:
+            return EefPoseError(tool_path, mjcf, joint_names, frames), None
+        except Exception as exc:  # missing joints, unknown frame, unsupported joint type
+            return None, str(exc)
+
+    def errors(self, pred: torch.Tensor, gt: torch.Tensor) -> torch.Tensor:
+        """(B, H, J) joint-space pairs -> (B, H, 4) [l_pos, l_rot, r_pos, r_rot]."""
+        import numpy as np
+
+        b, h, _ = pred.shape
+        flat = torch.cat([pred, gt]).reshape(-1, pred.shape[-1]).numpy()
+        left, right = self.fk.evaluate(flat)
+        out = []
+        for arm in (left, right):
+            a, c = arm[: b * h], arm[b * h:]
+            pos = np.linalg.norm(a[:, :3] - c[:, :3], axis=1)
+            # |dot| because q and -q are the same rotation; clipped because the fk output
+            # is float32 and a dot of 1.0000001 makes arccos nan.
+            dot = np.abs((a[:, 3:] * c[:, 3:]).sum(axis=1)).clip(0.0, 1.0)
+            out += [pos, 2.0 * np.arccos(dot)]
+        return torch.from_numpy(np.stack(out, axis=1)).float().reshape(b, h, 4)
+
+
+class EefSliceError:
+    """Pose error for a policy whose action *is* an EEF pose, so no kinematics are needed.
+
+    ``tr_joint_to_eef`` datasets carry ``[eef_l(6), eef_r(6), gripper_L, gripper_R]``; the
+    pose is already there and FK would be answering a question that has been answered.
+    Detected from the action names rather than the width, because 14 alone does not say
+    which 14.
+
+    Position error is the Euclidean distance between the two points, not the per-axis mean
+    that ``runs/20260903_pp_eef_state_head/summarise.py:group`` reports -- ``mae_per_joint``
+    already gives the per-axis view, and averaging x, y and z answers "how wrong is a
+    coordinate" rather than "how far away is the gripper".  The two are not comparable:
+    for isotropic Gaussian error E||e|| / E|e_i| is exactly 2 (chi_3 mean 2*sigma*sqrt(2/pi)
+    over half-normal mean sigma*sqrt(2/pi)), and the measured ratio on this checkpoint is
+    2.00.  A number from here is therefore ~2x the mm column in the 09-03 report.
+    """
+
+    #: ``R = Rz(yaw) Ry(pitch) Rx(roll)``, matching tr_joint_to_eef's stated convention.
+    SUFFIXES = ("_x", "_y", "_z", "_roll", "_pitch", "_yaw")
+
+    def __init__(self, groups: list[list[int]]):
+        self.groups = groups  # [[6 column indices for left], [... right]]
+
+    @classmethod
+    def detect(cls, names: list[str]):
+        """Return an instance if exactly two complete pose groups are present."""
+        prefixes: dict[str, dict[str, int]] = {}
+        for i, n in enumerate(names):
+            for suf in cls.SUFFIXES:
+                if n.endswith(suf):
+                    prefixes.setdefault(n[: -len(suf)], {})[suf] = i
+        full = [p for p, d in prefixes.items() if len(d) == len(cls.SUFFIXES)]
+        if len(full) != 2:
+            return None, f"expected 2 complete eef pose groups in action names, found {len(full)}"
+        # sorted so left/right ordering follows the action vector, not dict insertion
+        full.sort(key=lambda p: min(prefixes[p].values()))
+        return cls([[prefixes[p][s] for s in cls.SUFFIXES] for p in full]), None
+
+    def errors(self, pred: torch.Tensor, gt: torch.Tensor) -> torch.Tensor:
+        import numpy as np
+
+        b, h, _ = pred.shape
+        a = pred.reshape(-1, pred.shape[-1]).numpy().astype(np.float64)
+        c = gt.reshape(-1, gt.shape[-1]).numpy().astype(np.float64)
+        out = []
+        for cols in self.groups:
+            pos = np.linalg.norm(a[:, cols[:3]] - c[:, cols[:3]], axis=1)
+            ra, rc = _rpy_to_matrix(a[:, cols[3:]]), _rpy_to_matrix(c[:, cols[3:]])
+            # geodesic angle: arccos((tr(Ra^T Rc) - 1) / 2), clipped for float error
+            tr = np.einsum("nij,nij->n", ra, rc)
+            out += [pos, np.arccos(((tr - 1.0) / 2.0).clip(-1.0, 1.0))]
+        return torch.from_numpy(np.stack(out, axis=1)).float().reshape(b, h, 4)
+
+
+def _rpy_to_matrix(rpy):
+    """(N, 3) roll/pitch/yaw -> (N, 3, 3) with R = Rz(yaw) Ry(pitch) Rx(roll)."""
+    import numpy as np
+
+    cr, cp, cy = np.cos(rpy).T
+    sr, sp, sy = np.sin(rpy).T
+    return np.stack(
+        [
+            np.stack([cy * cp, cy * sp * sr - sy * cr, cy * sp * cr + sy * sr], axis=-1),
+            np.stack([sy * cp, sy * sp * sr + cy * cr, sy * sp * cr - cy * sr], axis=-1),
+            np.stack([-sp, cp * sr, cp * cr], axis=-1),
+        ],
+        axis=1,
+    )
+
+
+def resolve_eef(names: list[str], tool: Path, mjcf: Path, frames):
+    """Pick the pose-error path this action space supports, or say why there is none.
+
+    EEF-space first: if the action already carries poses, FK is not merely unnecessary,
+    it is inapplicable -- the MJCF chain expects joint angles.
+    """
+    obj, why_slice = EefSliceError.detect(names)
+    if obj is not None:
+        return obj, "eef-space (direct, no kinematics)", None
+    obj, why_fk = EefPoseError._resolve(tool, mjcf, names, frames)
+    if obj is not None:
+        return obj, f"joint-space FK ({mjcf.name})", None
+    return None, None, f"not eef-space ({why_slice}); not joint-space ({why_fk})"
+
+
+def eef_accumulator(horizon: int) -> ChunkErrorAccumulator:
+    """A 4-channel accumulator whose acc@tau thresholds are metres and radians."""
+    thresholds = torch.tensor([[p, r, p, r] for p, r in EEF_TAUS], dtype=torch.float64)
+    labels = [f"{p * 1000:g}mm+{r:g}rad" for p, r in EEF_TAUS]
+    return ChunkErrorAccumulator(horizon, 4, thresholds, labels)
+
+
+# --------------------------------------------------------------------------------------
 # metric accumulation
 # --------------------------------------------------------------------------------------
+#: acc@tau thresholds, in units of each joint's action std.  Per-joint rather than a flat
+#: radian value because the action vector mixes units: 14 arm joints in radians and 2
+#: grippers in [0, 1], where "within 0.05" means two different things.
+#:
+#: These are always computed rather than hidden behind a flag.  One broadcast compare per
+#: batch is cheaper than the branch that would skip it, and a metric that is always in the
+#: report is one nobody has to re-run the harness to get.
+ACC_TAUS = (0.1, 0.25, 0.5, 1.0)
+TAU_LABELS = [f"{t:g}sigma" for t in ACC_TAUS]
+
+
 class ChunkErrorAccumulator:
     """Streaming sum of |pred - gt| and (pred - gt)^2 over (horizon, joint), masked.
 
@@ -272,15 +469,38 @@ class ChunkErrorAccumulator:
     number of anchors -- a full pass over six datasets is ~10^4 anchors x 100 x 16.
     """
 
-    def __init__(self, horizon: int, n_joints: int, device: str = "cpu"):
+    def __init__(self, horizon: int, n_joints: int, thresholds: torch.Tensor | None = None,
+                 tau_labels: list[str] | None = None, device: str = "cpu"):
         self.abs_sum = torch.zeros(horizon, n_joints, dtype=torch.float64, device=device)
         self.sq_sum = torch.zeros(horizon, n_joints, dtype=torch.float64, device=device)
         self.count = torch.zeros(horizon, 1, dtype=torch.float64, device=device)
+        # thresholds: (n_tau, n_joints) in raw action units, or None to skip acc@tau.
+        # Stored as (n_tau, 1, 1, n_joints) to broadcast against a (B, H, J) error.
+        self.thresholds = (
+            None if thresholds is None
+            else thresholds.double().to(device).view(thresholds.shape[0], 1, 1, -1)
+        )
+        self.hit_sum = (
+            None if thresholds is None
+            else torch.zeros(thresholds.shape[0], horizon, n_joints,
+                             dtype=torch.float64, device=device)
+        )
+        # Carried on the accumulator rather than read from a module global: the joint-space
+        # thresholds are multiples of sigma, the EEF ones are metres and radians, and the
+        # two must not borrow each other's labels.
+        self.tau_labels = tau_labels
 
     def update(self, pred: torch.Tensor, gt: torch.Tensor, valid: torch.Tensor) -> None:
         """pred/gt: (B, H, J) float. valid: (B, H) bool -- False where the chunk ran past
         the end of the episode and the recorded action is padding."""
-        err = (pred.double() - gt.double()) * valid.unsqueeze(-1).double()
+        err = pred.double() - gt.double()
+        mask = valid.unsqueeze(-1).double()
+        if self.hit_sum is not None:
+            # Masked *after* the compare, not before: a padded step has err == 0, which
+            # would otherwise score as a hit at every threshold.
+            hit = (err.abs().unsqueeze(0) <= self.thresholds).double() * mask.unsqueeze(0)
+            self.hit_sum += hit.sum(dim=1)
+        err = err * mask
         self.abs_sum += err.abs().sum(dim=0)
         self.sq_sum += err.pow(2).sum(dim=0)
         self.count += valid.double().sum(dim=0).unsqueeze(-1)
@@ -308,6 +528,18 @@ class ChunkErrorAccumulator:
         h = slice(0, upto) if upto else slice(None)
         n = self.count[h].sum() * self.sq_sum.shape[1]
         return (self.sq_sum[h].sum() / n.clamp_min(1.0)).sqrt().item()
+
+    def acc_at_tau(self, upto: int | None = None) -> list[float]:
+        """Fraction of valid (step, joint) pairs within each threshold."""
+        if self.hit_sum is None:
+            return []
+        h = slice(0, upto) if upto else slice(None)
+        n = self.count[h].sum() * self.hit_sum.shape[2]
+        return (self.hit_sum[:, h].sum(dim=(1, 2)) / n.clamp_min(1.0)).tolist()
+
+    def acc_at_tau_per_joint(self) -> torch.Tensor:
+        """(n_tau, n_joints) -- which joints the chunk actually lands on."""
+        return self.hit_sum.sum(dim=1) / self.count.sum().clamp_min(1.0)
 
     def n_anchor_steps(self) -> int:
         return int(self.count.sum().item())
@@ -427,6 +659,9 @@ def evaluate(
     trace_episodes: set[int] | None = None,
     seed: int = 0,
     seed_repeat: int = 0,
+    eef_tool: Path | None = None,
+    eef_mjcf: Path = DEFAULT_MJCF,
+    eef: bool = True,
 ) -> dict:
     from lerobot.utils.constants import ACTION, OBS_IMAGES, OBS_STATE
 
@@ -473,6 +708,9 @@ def evaluate(
         print(f"contamination filter: {len(exclude_hashes)} unique training episodes total",
               flush=True)
     a_mean, a_std = action_stats(postprocessor)
+    # (n_tau, J): tau_k * std_j.  Built here because a_std is the only per-joint scale the
+    # checkpoint carries; a raw-unit threshold would not survive the rad/gripper mix.
+    tau_thresholds = torch.as_tensor(ACC_TAUS).double().view(-1, 1) * a_std.double().view(1, -1)
 
     per_dataset: dict[str, dict] = {}
     keys = ["policy_raw", "policy_deployed", "hold_state", "train_mean"]
@@ -481,6 +719,14 @@ def evaluate(
     if is_patch and seed_repeat:
         keys += [f"seed_{r + 1}" for r in range(seed_repeat)]
     overall = {k: None for k in keys}
+    # EEF error is scored only for these: the filt_* rungs exist to attribute a joint-space
+    # delta to one filter, and running FK on all of them multiplies the cost of the pass
+    # for a number that answers a different question.
+    eef_keys = [k for k in ("policy_raw", "policy_deployed", "hold_state", "train_mean")
+                if k in keys]
+    overall_eef: dict[str, ChunkErrorAccumulator] = {}
+    eef_fk = None
+    eef_skip_reason = None if eef else "disabled with --no-eef"
     n_joints = None
     joint_names = None
     t_start = time.time()
@@ -503,7 +749,18 @@ def evaluate(
             n_joints = meta.features[ACTION]["shape"][0]
             joint_names = meta.features[ACTION].get("names") or [f"j{i}" for i in range(n_joints)]
             for k in overall:
-                overall[k] = ChunkErrorAccumulator(horizon, n_joints)
+                overall[k] = ChunkErrorAccumulator(horizon, n_joints, tau_thresholds, TAU_LABELS)
+            # Auto-enabled: if the MJCF resolves and this dataset's joint names cover both
+            # chains, EEF error is reported; otherwise the run says why and carries on.
+            if eef:
+                eef_fk, eef_how, eef_skip_reason = resolve_eef(
+                    joint_names, eef_tool or DEFAULT_EEF_TOOL, eef_mjcf, DEFAULT_EEF_FRAMES
+                )
+            if eef_fk is not None:
+                overall_eef = {k: eef_accumulator(horizon) for k in eef_keys}
+                print(f"eef pose error: {eef_how}", flush=True)
+            else:
+                print(f"eef pose error: skipped ({eef_skip_reason})", flush=True)
 
         idx = list(range(0, len(ds), stride))
         if max_anchors_per_dataset:
@@ -516,7 +773,8 @@ def evaluate(
             pin_memory=device.startswith("cuda"),
         )
 
-        acc = {k: ChunkErrorAccumulator(horizon, n_joints) for k in overall}
+        acc = {k: ChunkErrorAccumulator(horizon, n_joints, tau_thresholds, TAU_LABELS) for k in overall}
+        acc_eef = {k: eef_accumulator(horizon) for k in overall_eef}
         camera_keys = meta.camera_keys
         t0 = time.time()
 
@@ -579,6 +837,23 @@ def evaluate(
                 a_mean.view(1, 1, -1).expand_as(gt), gt, valid
             )
 
+            if acc_eef:
+                # gt is the zero of an error magnitude, so the accumulator's |pred - gt|
+                # and (pred - gt)^2 become the mean and RMS of the pose error itself.
+                zero = None
+                for k, chunk in (
+                    ("policy_raw", pred),
+                    ("policy_deployed", deployed),
+                    ("hold_state", state.unsqueeze(1).expand_as(gt)),
+                    ("train_mean", a_mean.view(1, 1, -1).expand_as(gt)),
+                ):
+                    if k not in acc_eef:
+                        continue
+                    err = eef_fk.errors(chunk, gt)
+                    if zero is None:
+                        zero = torch.zeros_like(err)
+                    acc_eef[k].update(err, zero, valid)
+
             if traces is not None and traces_n < trace_anchors:
                 if trace_episodes is not None:
                     keep = torch.isin(
@@ -615,6 +890,12 @@ def evaluate(
             overall[k].abs_sum += acc[k].abs_sum
             overall[k].sq_sum += acc[k].sq_sum
             overall[k].count += acc[k].count
+            overall[k].hit_sum += acc[k].hit_sum
+        for k in overall_eef:
+            overall_eef[k].abs_sum += acc_eef[k].abs_sum
+            overall_eef[k].sq_sum += acc_eef[k].sq_sum
+            overall_eef[k].count += acc_eef[k].count
+            overall_eef[k].hit_sum += acc_eef[k].hit_sum
 
         per_dataset[repo_id] = {
             "episodes_evaluated": meta.total_episodes - n_dropped,
@@ -624,6 +905,8 @@ def evaluate(
             "anchor_action_steps": acc["policy_raw"].n_anchor_steps(),
             "seconds": round(time.time() - t0, 1),
             **{k: summarise(acc[k], a_std, horizon, joint_names) for k in overall},
+            **({"eef": {k: summarise_eef(acc_eef[k], horizon) for k in acc_eef}}
+               if acc_eef else {}),
         }
         print(
             f"[{repo_id}] {len(idx)} anchors  "
@@ -669,6 +952,33 @@ def evaluate(
         "total_seconds": round(time.time() - t_start, 1),
         "per_dataset": per_dataset,
         "aggregate": {k: summarise(overall[k], a_std, horizon, joint_names) for k in overall},
+        "eef_aggregate": ({k: summarise_eef(overall_eef[k], horizon) for k in overall_eef}
+                          if overall_eef else {"skipped": eef_skip_reason}),
+    }
+
+
+def summarise_eef(acc: ChunkErrorAccumulator, horizon: int) -> dict:
+    """Per-channel only.  There is deliberately no scalar aggregate: averaging a metre
+    against a radian produces a number that moves for reasons nobody can name."""
+    per_h = acc.mae_per_horizon_joint()
+    cuts = [c for c in (1, 10, 25, 50, horizon) if c <= horizon]
+    rms = (acc._safe(acc.sq_sum).mean(dim=0)).sqrt()
+    return {
+        "mean_per_channel": dict(zip(EEF_CHANNELS, [round(v, 6) for v in per_h.mean(0).tolist()])),
+        "rms_per_channel": dict(zip(EEF_CHANNELS, [round(v, 6) for v in rms.tolist()])),
+        "mean_at_horizon": {
+            str(c): dict(zip(EEF_CHANNELS, [round(v, 6) for v in per_h[:c].mean(0).tolist()]))
+            for c in cuts
+        },
+        "mean_per_horizon": {
+            ch: [round(v, 6) for v in per_h[:, i].tolist()]
+            for i, ch in enumerate(EEF_CHANNELS)
+        },
+        "acc_at_tau": {
+            t: dict(zip(EEF_CHANNELS, [round(v, 6) for v in row]))
+            for t, row in zip(acc.tau_labels, acc.acc_at_tau_per_joint().tolist())
+        },
+        "anchor_action_steps": acc.n_anchor_steps(),
     }
 
 
@@ -681,7 +991,8 @@ def summarise(acc: ChunkErrorAccumulator, a_std: torch.Tensor, horizon: int, nam
     norm_rmse = (acc._safe(acc.sq_sum) / a_std.double().clamp_min(1e-8).pow(2)).mean().sqrt().item()
     norm_mae = norm_hj.mean().item()
     cuts = [c for c in (1, 10, 25, 50, horizon) if c <= horizon]
-    return {
+    tau_names = acc.tau_labels or []
+    out = {
         "mae": acc.mae(),
         "rmse": acc.rmse(),
         "norm_mae": norm_mae,
@@ -694,6 +1005,19 @@ def summarise(acc: ChunkErrorAccumulator, a_std: torch.Tensor, horizon: int, nam
         "norm_mae_per_joint": dict(zip(names, [round(v, 6) for v in norm_hj.mean(0).tolist()])),
         "anchor_action_steps": acc.n_anchor_steps(),
     }
+    if acc.hit_sum is not None:
+        out |= {
+            "acc_at_tau": dict(zip(tau_names, [round(v, 6) for v in acc.acc_at_tau()])),
+            "acc_at_tau_at_horizon": {
+                str(c): dict(zip(tau_names, [round(v, 6) for v in acc.acc_at_tau(upto=c)]))
+                for c in cuts
+            },
+            "acc_at_tau_per_joint": {
+                t: dict(zip(names, [round(v, 6) for v in row]))
+                for t, row in zip(tau_names, acc.acc_at_tau_per_joint().tolist())
+            },
+        }
+    return out
 
 
 # --------------------------------------------------------------------------------------
@@ -731,7 +1055,104 @@ def selftest() -> None:
     assert abs(s["norm_mae"] - s["mae"]) < 1e-12, s
     assert abs(s["norm_rmse"] - s["rmse"]) < 1e-12, s
     assert abs(s["tail_ratio"] - 21**0.5 / 4.0) < 1e-12, s["tail_ratio"]
+    assert "acc_at_tau" not in s, "tau keys must be absent when no thresholds were given"
+
+    # acc@tau: the padded step must not score as a hit despite its zero error.
+    tau = torch.tensor([[0.5, 0.5], [1.5, 1.5]])            # (n_tau=2, n_joints=2)
+    t = ChunkErrorAccumulator(horizon=3, n_joints=2, thresholds=tau, tau_labels=["a", "b"])
+    t.update(pred, gt, valid)                                # errors 1,1 | 2,2 | 9,9(pad)
+    # tau=0.5 catches nothing; tau=1.5 catches only the two step-0 joints, out of the
+    # 4 valid (step, joint) pairs.  A padded hit would make these 2/6 and 4/6.
+    assert t.acc_at_tau() == [0.0, 0.5], t.acc_at_tau()
+    assert t.acc_at_tau(upto=1) == [0.0, 1.0], t.acc_at_tau(upto=1)
+    assert t.acc_at_tau_per_joint().tolist() == [[0.0, 0.0], [0.5, 0.5]]
+    # and it must stay batch-split invariant, like the other two sums
+    u, w = (ChunkErrorAccumulator(3, 2, thresholds=tau, tau_labels=["a", "b"]) for _ in range(2))
+    u.update(pred, gt, valid)
+    u.update(pred * 0.1, gt, valid)
+    w.update(torch.cat([pred, pred * 0.1]), torch.cat([gt, gt]), torch.cat([valid, valid]))
+    assert u.acc_at_tau() == w.acc_at_tau(), (u.acc_at_tau(), w.acc_at_tau())
     print("selftest OK (accumulator)")
+
+
+def selftest_eef_slice() -> None:
+    """The EEF-space path: no kinematics, but the angle metric still has to be an angle."""
+    names = [f"eef_{s}_{c}" for s in "lr" for c in ("x", "y", "z", "roll", "pitch", "yaw")]
+    names += ["gripper_L", "gripper_R"]
+    obj, how, why = resolve_eef(names, Path("/nonexistent.py"), Path("/nonexistent.xml"),
+                                DEFAULT_EEF_FRAMES)
+    assert obj is not None and "eef-space" in how, why
+    assert obj.groups == [[0, 1, 2, 3, 4, 5], [6, 7, 8, 9, 10, 11]], obj.groups
+
+    gt = torch.zeros(2, 3, 14)
+    assert torch.allclose(obj.errors(gt.clone(), gt), torch.zeros(2, 3, 4), atol=1e-6)
+
+    # a 30 mm offset on left x and 0.1 rad of left yaw, on one (anchor, step) only
+    pred = gt.clone()
+    pred[0, 1, 0], pred[0, 1, 5] = 0.03, 0.1
+    err = obj.errors(pred, gt)
+    assert abs(err[0, 1, 0] - 0.03) < 1e-6 and abs(err[0, 1, 1] - 0.1) < 1e-6, err[0, 1]
+    assert err[0, 1, 2:].abs().max() < 1e-6, "left leaked into right"
+    assert err[0, 0].abs().max() < 1e-6 and err[1].abs().max() < 1e-6, "leaked across reshape"
+
+    # position is the Euclidean distance, not the per-axis mean: 3-4-5 on x/y
+    d = gt.clone()
+    d[0, 0, 0], d[0, 0, 1] = 0.03, 0.04
+    assert abs(obj.errors(d, gt)[0, 0, 0] - 0.05) < 1e-6, "position must be a distance"
+
+    # the whole reason rpy is not subtracted: yaw pi and -pi are the same rotation
+    a, b = gt.clone(), gt.clone()
+    a[..., 5], b[..., 5] = math.pi, -math.pi
+    assert obj.errors(a, b)[0, 0, 1] < 1e-5, "euler wraparound leaked into the angle"
+    # and a rotation must never exceed pi
+    r = torch.rand(4, 3, 14) * 8 - 4
+    assert obj.errors(r, torch.rand(4, 3, 14) * 8 - 4)[..., [1, 3]].max() <= math.pi + 1e-6
+    print("selftest OK (eef slice)")
+
+
+def selftest_eef(tool: Path = DEFAULT_EEF_TOOL, mjcf: Path = DEFAULT_MJCF) -> None:
+    """Check the FK wrapper on invariants that hold whatever the chain geometry is."""
+    names = [f"Joint{i}_{s}" for s in "LR" for i in range(1, 8)] + ["gripper_L", "gripper_R"]
+    fk, why = EefPoseError._resolve(tool, mjcf, names, DEFAULT_EEF_FRAMES)
+    if fk is None:
+        print(f"selftest SKIPPED (eef): {why}")
+        return
+
+    b, h, j = 2, 3, 16
+    gt = torch.zeros(b, h, j)
+    # identical chunks -> exactly zero on all four channels
+    assert torch.allclose(fk.errors(gt.clone(), gt), torch.zeros(b, h, 4), atol=1e-6)
+
+    # A left-arm joint must move the left channels and leave the right ones at zero.
+    # Joint2_L rather than Joint1_L: at the zero configuration the tool frame lies *on*
+    # the Joint1 axis, so rolling it turns the gripper in place for no position error.
+    pred = gt.clone()
+    pred[0, 1, 1] = 0.3                      # Joint2_L on one (anchor, step) only
+    err = fk.errors(pred, gt)
+    assert err[0, 1, 0] > 1e-3, err[0, 1]
+    assert abs(err[0, 1, 1] - 0.3) < 1e-4, "a single hinge must rotate the tool by its angle" 
+    assert torch.allclose(err[0, 1, 2:], torch.zeros(2), atol=1e-6), "left leaked into right"
+    # and it must not leak across the batch/horizon reshape
+    assert torch.allclose(err[0, 0], torch.zeros(4), atol=1e-6), "leaked across horizon"
+    assert torch.allclose(err[1], torch.zeros(h, 4), atol=1e-6), "leaked across batch"
+
+    # gripper columns are not on either chain, so they cannot move a pose
+    g = gt.clone()
+    g[..., 14:] = 1.0
+    assert torch.allclose(fk.errors(g, gt), torch.zeros(b, h, 4), atol=1e-6)
+
+    # a pi rotation about a wrist joint must give a finite angle, not nan from arccos
+    w = gt.clone()
+    w[..., 6] = math.pi
+    assert torch.isfinite(fk.errors(w, gt)).all(), "arccos domain not clipped"
+
+    # the 4-channel accumulator carries metre/radian labels, not sigma ones
+    a = eef_accumulator(h)
+    a.update(err, torch.zeros_like(err), torch.ones(b, h, dtype=torch.bool))
+    out = summarise_eef(a, h)
+    assert set(out["mean_per_channel"]) == set(EEF_CHANNELS), out["mean_per_channel"]
+    assert "mm" in next(iter(out["acc_at_tau"])), out["acc_at_tau"]
+    print("selftest OK (eef pose error)")
 
 
 def parse_filters(spec: str) -> tuple[str, ...]:
@@ -865,6 +1286,12 @@ def main() -> None:
     p.add_argument("--seed-repeat", type=int, default=0,
                    help="re-run each anchor with N further seeds and score them separately,\n"
                         "to size the sampling noise against the differences being measured")
+    p.add_argument("--no-eef", dest="eef", action="store_false",
+                   help="skip end-effector pose error even when the MJCF resolves; by "
+                        "default it is computed whenever the joint names cover both chains")
+    p.add_argument("--eef-tool", type=Path, default=DEFAULT_EEF_TOOL,
+                   help="tr_joint_to_eef.py providing MjcfForwardKinematics")
+    p.add_argument("--eef-mjcf", type=Path, default=DEFAULT_MJCF)
     p.add_argument("--selftest", action="store_true")
     args = p.parse_args()
 
@@ -875,6 +1302,8 @@ def main() -> None:
 
     if args.selftest:
         selftest()
+        selftest_eef_slice()
+        selftest_eef(args.eef_tool, args.eef_mjcf)
         selftest_deploy(args.vlahost_src)
         return
     # --checkpoint is the pretrained_model/ dir, not the job dir. Getting this wrong throws
@@ -914,6 +1343,9 @@ def main() -> None:
         trace_episodes=set(args.trace_episode) or None,
         seed=args.seed,
         seed_repeat=args.seed_repeat,
+        eef_tool=args.eef_tool,
+        eef_mjcf=args.eef_mjcf,
+        eef=args.eef,
     )
     agg = report["aggregate"]
     print(f"\n=== aggregate over all held-out datasets "
@@ -923,9 +1355,23 @@ def main() -> None:
     for k, v in agg.items():
         delta = f"{100 * (v['mae'] - raw) / raw:+6.1f}% vs raw" if k.startswith("filt_") else ""
         print(f"  {k:<18} mae={v['mae']:.5f}  rmse={v['rmse']:.5f}  "
-              f"norm_mae={v['norm_mae']:.5f}  tail={v['tail_ratio']:.2f}  {delta}")
+              f"norm_mae={v['norm_mae']:.5f}  tail={v['tail_ratio']:.2f}  "
+              f"acc@0.25s={v.get('acc_at_tau', {}).get('0.25sigma', float('nan')):.3f}  {delta}")
     for k in ("policy_raw", "policy_deployed"):
         print(f"  {k} vs null: {null / max(agg[k]['mae'], 1e-12):.2f}x")
+    eef_agg = report.get("eef_aggregate") or {}
+    if "skipped" in eef_agg:
+        print(f"\n  eef: skipped ({eef_agg['skipped']})")
+    elif eef_agg:
+        tight = next(iter(EEF_TAUS))
+        label = f"{tight[0] * 1000:g}mm+{tight[1]:g}rad"
+        print(f"\n=== end-effector pose error (mean over executed horizon) ===")
+        for k, v in eef_agg.items():
+            m, a = v["mean_per_channel"], v["acc_at_tau"][label]
+            print(f"  {k:<18} "
+                  f"L {m['left_pos_m'] * 1000:6.1f}mm/{m['left_rot_rad']:.3f}rad  "
+                  f"R {m['right_pos_m'] * 1000:6.1f}mm/{m['right_rot_rad']:.3f}rad  "
+                  f"acc@{label} L={a['left_pos_m']:.3f} R={a['right_pos_m']:.3f}")
     if args.out:
         args.out.parent.mkdir(parents=True, exist_ok=True)
         args.out.write_text(json.dumps(report, indent=2))
