@@ -836,9 +836,9 @@ def main() -> None:
                         "Sensitivity knob; 0 reproduces the original harness's alignment")
     p.add_argument("--vlahost-src", type=Path, default=DEFAULT_VLAHOST_SRC,
                    help="checkout whose rollout/trajectory.py runs on the robot")
-    p.add_argument("--filters", default="all",
+    p.add_argument("--filters", default="none",
                    help="which deploy filters policy_deployed goes through:\n"
-                        "'all' (default), 'none', or a comma list of\n"
+                        "'none' (default), 'all', or a comma list of\n"
                         + ", ".join(DEPLOY_FILTER_ORDER)
                         + ".\nApplied in that fixed order whatever order you type.")
     p.add_argument("--filter-ablation", action="store_true",
